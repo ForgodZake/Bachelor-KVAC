@@ -9,3 +9,5 @@ a = group.random(ZR)
 result = pair(g1 ** a, g2)
 
 print("Pairing works:", result)
+
+# just checking lmao
