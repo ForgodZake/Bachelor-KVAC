@@ -1,13 +1,15 @@
 from charm.toolbox.pairinggroup import PairingGroup, G1, G2, ZR, pair
+from SP_MAC_EQ_Scheme import SP_MAC_EQ
 
 group = PairingGroup('SS512')
+schemeConstruct = SP_MAC_EQ(group)
 
-g1 = group.random(G1)
-g2 = group.random(G2)
-a = group.random(ZR)
+M = ["Hello1", "Hello2", "Hello3"]
+length = len(M)
 
-result = pair(g1 ** a, g2)
+secretKey = schemeConstruct.keyGen(length)
+(tag1, tag2) = schemeConstruct.createMac(secretKey, M)   
 
-print("Pairing works:", result)
+print("tag1: ", tag1)
+print("tag2:", tag2)
 
-# just checking lmao
