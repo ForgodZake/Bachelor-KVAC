@@ -2,9 +2,9 @@ from charm.toolbox.pairinggroup import PairingGroup, G1, G2, ZR, pair
 
 class SP_MAC_EQ:
 
-    def __init__(self, groubGenerator):
+    def __init__(self, groupObject):
         
-        self.group = groubGenerator
+        self.group = groupObject
         self.setup()
 
 
@@ -22,12 +22,12 @@ class SP_MAC_EQ:
 
     def createMac(self, secretKey, rawMessage):
 
-        R = self.group.init(G1, 1)
-        Message = [self.group.hash(m, G1) for m in rawMessage]
+        # the raw message string, is hashed via the group hash to introduce randomness, 
+        # The hash is implicity matched to an element in G1 via charm algorithm.
+        encodedMessages = [self.group.hash(m, G1) for m in rawMessage]
 
-        for i in range(1, len(secretKey)):
-
-            R *=  Message[i] ** secretKey[i]
+        # Compute the wheighted sum (sum_i x_i * M_i)
+        wheightedSum = self.computeWheightedSum(secretKey, encodedMessages)
 
         # get a random element from the prime modular group as scalar
         modularScalar = self.group.random(ZR)
@@ -35,13 +35,53 @@ class SP_MAC_EQ:
         modularScalarInverse = modularScalar ** -1
 
         # create the two tags
-        tag1 = R ** modularScalar
-        tag2 = self.g2 ** modularScalarInverse
+        tagR = wheightedSum * modularScalar
+        tagT = self.g2 * modularScalarInverse
 
-        return (tag1, tag2)
+        return encodedMessages, tagR, tagT
 
-    def verify(secretKey, Message, tag):
-        return 0 
+    def verify(self, secretKey, encodedMessages, tagR, tagT):
 
-    def changeRepresentation(tag, modularScalar):
-        return 0
+        verify = False
+
+        # Compute the wheighted sum (sum_i x_i * M_i)
+        wheightedSum = self.computeWheightedSum(secretKey, encodedMessages)   
+        
+        # Cancel out the random scalar of the computed tags and given tags.
+        left = pair(wheightedSum, self.g2)
+        right = pair(tagR, tagT)
+
+        # If the computed tags then match the given tags, verification succesfull
+        if left == right:
+            verify = True
+    
+        return verify
+
+    def changeRepresentation(self, encodedMessages, tagR, tagT, modularScalarMu):
+
+        randomScalar = self.group.random(ZR)
+
+        # Change the encoded messages to the mu representation of the encoding
+        changedMessages = [message * modularScalarMu for message in encodedMessages] 
+
+        # randomize using the scalar and Mu to match the changed messages
+        newTagR = tagR * (randomScalar * modularScalarMu)
+        newTagT = tagT * (randomScalar ** -1)
+
+        # return new representation
+        return changedMessages, newTagR, newTagT
+
+    def computeWheightedSum(self, secretKey, encodedMessages):
+
+        # get the base element in G1
+        baseElement = self.group.init(G1, 1) 
+        S = baseElement
+
+        # for each message check that it's not the base element, if not,
+        # sum up all the encoded messages with correspnding secretKey
+        for i in range(0, len(secretKey)):
+            if encodedMessages[i] == baseElement:
+                break
+            S +=  encodedMessages[i] * secretKey[i]
+
+        return S
