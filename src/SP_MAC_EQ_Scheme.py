@@ -1,18 +1,13 @@
-from charm.toolbox.pairinggroup import PairingGroup, G1, G2, ZR, pair
+from charm.toolbox.pairinggroup import G1, G2, ZR, pair
 
 class SP_MAC_EQ:
 
     def __init__(self, groupObject):
-        
-        self.group = groupObject
-        self.setup()
-
-
-    def setup(self):
         # Create bilinary groups
+        self.group = groupObject
         self.g1 = self.group.random(G1)
         self.g2 = self.group.random(G2)
-
+        
     def keyGen(self, length):
 
         # Create secret key from random uniformly distributed elements from modular subspace
@@ -24,7 +19,7 @@ class SP_MAC_EQ:
 
         # the raw message string, is hashed via the group hash to introduce randomness, 
         # The hash is implicity matched to an element in G1 via charm algorithm.
-        encodedMessages = [self.group.hash(m, G1) for m in rawMessage]
+        encodedMessages = [self.group.hash(message, G1) for message in rawMessage]
 
         # Compute the wheighted sum (sum_i x_i * M_i)
         wheightedSum = self.computeWheightedSum(secretKey, encodedMessages)
