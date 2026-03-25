@@ -70,13 +70,13 @@ class SP_MAC_EQ:
 
         # get the base element in G1
         baseElement = self.group.init(G1, 1) 
-        S = baseElement
+        wheightedSum = baseElement
 
         # for each message check that it's not the base element, if not,
         # sum up all the encoded messages with correspnding secretKey
         for i in range(0, len(secretKey)):
             if encodedMessages[i] == baseElement:
                 break
-            S +=  encodedMessages[i] * secretKey[i]
+            wheightedSum +=  encodedMessages[i] * secretKey[i]
 
-        return S
+        return wheightedSum

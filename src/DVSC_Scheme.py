@@ -1,21 +1,15 @@
-from charm.toolbox.pairinggroup import G1, ZR, pair
+from charm.toolbox.pairinggroup import G1, ZR
 
 class DVSC:
 
     def __init__(self, groupObject):
         self.group = groupObject
-
-
-    from charm.toolbox.pairinggroup import G1, ZR, pair
-
-class DVSC:
-
-    def __init__(self, groupObject):
-        self.group = groupObject
+        self.G = self.group.random(G1)
+        self.GPrime = self.group.random(G1)
 
     def buildCommitmentBasis(self, secretKey, upperBound):
 
-        basisElement = self.group.random(G1)
+        basisElement = self.G
         commitmentBasis = [basisElement]
 
         for i in range(upperBound):
@@ -25,32 +19,42 @@ class DVSC:
         return commitmentBasis
 
     def hashForChallenge(self, announcementSequence, commitmentBasis):
-        data = b""
+
+        # creates a combined hash of announementSequence and commitmentBasis,
+        # using a serialized byte representasion
+        byteRepresentation = b""
         for announcementElement in announcementSequence:
-            data += self.group.serialize(announcementElement)
+            byteRepresentation += self.group.serialize(announcementElement)
         for basisElement in commitmentBasis:
-            data += self.group.serialize(basisElement)
-        return self.group.hash(data, ZR)
+            byteRepresentation += self.group.serialize(basisElement)
+        return self.group.hash(byteRepresentation, ZR)
 
     def sigmaProtocol(self, randomScalar, commitmentBasis):
-
+        
+        # creates the sigma sequence by upscaling each element from the prior by the random scalar
         sigmaSequence = []
         for i in range(len(commitmentBasis)):
-            sigma_i = commitmentBasis[i] * randomScalar
-            sigmaSequence.append(sigma_i)
+            sigmaI = commitmentBasis[i] * randomScalar
+            sigmaSequence.append(sigmaI)
+
         return sigmaSequence
     
     def createPolynomial(self, attributes):
         
         coefficients = [1]
 
+        # for each attribute we update the polynomial degree,
+        # by doing currentPoly * (X - a)
         for attribute in attributes:
-            newCoefficients = [self.group.init(ZR, 0)] * (len(coefficients) + 1)
-
+            # Set the length of the next degree poly
+            newCoefficients = [0] * (len(coefficients) + 1)
+            
+            # Update all the coefficients by currentPoly * (X - a)
             for i in range(len(coefficients)):
                 newCoefficients[i] += -attribute * coefficients[i]
                 newCoefficients[i + 1] += coefficients[i]
 
+            # store and repeat
             coefficients = newCoefficients
 
         return coefficients
@@ -59,6 +63,7 @@ class DVSC:
 
         commitment = self.group.init(G1, 1)
 
+        # create commitment by scaing each basis element by the coefficient (f_i * V_i)
         for i in range(len(coefficients)):
             commitment += coefficients[i] * commitmentBasis[i]
 
@@ -99,17 +104,16 @@ class DVSC:
         
         # Create and return commitment
         commitment = self.createCommitment(coefficients, commitmentBasis)   
-        randomScalarG1 = self.group.random(G1)
 
-        return commitment, randomScalarG1
+        return commitment
 
-    def randomize(self, commitment, randomScalarG1, randomScalarMu):
+    def randomize(self, commitment, randomScalarMu):
 
         # randomice commitment with given scalar
         newCommitment = commitment * randomScalarMu
-        newRandomScalarG1 = randomScalarG1 * randomScalarMu
+        newGPrime = self.GPrime * randomScalarMu
 
-        return newCommitment, newRandomScalarG1
+        return newCommitment, newGPrime
 
     def openSubset(self, commitmentBasis, attributes, attributeSubset, randomScalarMu):
 
@@ -119,36 +123,37 @@ class DVSC:
             if not (attributes[i] in attributeSubset):
                 remainingAttributesRaw.append(attributes[i])
 
+        # Hash the remaining attributes (needed as they are strings) and create the polynomial
         remainingAttributes = [self.group.hash(attributeRaw, ZR) for attributeRaw in remainingAttributesRaw]
-
         coefficients = self.createPolynomial(remainingAttributes)
 
+        # Create the witness by scaling the commitment with our random mu
         witness = randomScalarMu * self.createCommitment(coefficients, commitmentBasis)
 
         return witness
 
-    def verifySubset(self, secretKey, randomizedCommitment, witness, attributeSubsetRaw):
+    def verifySubset(self, secretKey, randomizedCommitment, witness, requiredAttributeSubsetRaw):
 
-        attributesSubset = [self.group.hash(attribute, ZR) for attribute in attributeSubsetRaw]
-
+        # Hash the disclosed attributes and build the subset polynomial f_D(X)
+        attributesSubset = [self.group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
         coefficients = self.createPolynomial(attributesSubset)
-        subsetEvaluation = self.evaluatePolynomial(coefficients, secretKey)
-        commitment = subsetEvaluation * witness
 
-        print("randomizedCommitment: ", randomizedCommitment)
-        print("commmitment: ", commitment)
+        # Evaluate f_D at the secret key v and combine it with the witness
+        # to reconstruct the commitment value that should match C'
+        polynomialAtSecret = self.evaluatePolynomial(coefficients, secretKey)
+        commitment = polynomialAtSecret * witness
 
-        if randomizedCommitment == commitment:
-            return True
-        
-        return False
+        # Check that the reconstructed commitment value matches the randomized commitment
+        return True if randomizedCommitment == commitment else False
     
-    def evaluatePolynomial(self, coefficients, x):
+    def evaluatePolynomial(self, coefficients, secretKey):
+        
         result = self.group.init(ZR, 0)
-        power = self.group.init(ZR, 1)
+        power = 1
 
+        # compute the output of the polynomial with secretKey as input 
         for coefficient in coefficients:
             result += coefficient * power
-            power *= x
+            power *= secretKey
 
         return result

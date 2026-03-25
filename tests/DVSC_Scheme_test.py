@@ -1,7 +1,7 @@
-from charm.toolbox.pairinggroup import G1, ZR, pair, PairingGroup
+from charm.toolbox.pairinggroup import ZR, PairingGroup
 from DVSC_Scheme import DVSC
 
-def test_keyGen_and_Commit():
+def test_two_differently_randomized_commitments_both_verifies():
 
     group = PairingGroup('SS512')
     scheme = DVSC(group)
@@ -10,19 +10,19 @@ def test_keyGen_and_Commit():
 
     secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))
 
-    commitment, randomScalarG1 = scheme.commit(challenge, response, commitmentBasis, attributeList)
-
-    print("Commitment: ", commitment)
+    commitment = scheme.commit(challenge, response, commitmentBasis, attributeList)
     
     randomScalarMu = group.random(ZR)
+    differentRandomScalarMu = group.random(ZR)
 
-    newCommitment, _ = scheme.randomize(commitment, randomScalarG1, randomScalarMu)
+    assert randomScalarMu != differentRandomScalarMu
 
-    print("newCommitment: ", newCommitment)
+    newCommitment, _ = scheme.randomize(commitment, randomScalarMu)
+    differentNewCommitment, _ = scheme.randomize(commitment, differentRandomScalarMu)
 
-    attributeSubsetRaw = ["age"]
-    witness = scheme.openSubset(commitmentBasis, attributeList, attributeSubsetRaw, randomScalarMu)
+    requiredAttributeSubsetRaw = ["age"]
+    witness = scheme.openSubset(commitmentBasis, attributeList, requiredAttributeSubsetRaw, randomScalarMu)
+    differentWitness = scheme.openSubset(commitmentBasis, attributeList, requiredAttributeSubsetRaw, differentRandomScalarMu)
 
-    print("witness: ", witness)
-
-    assert scheme.verifySubset(secretKey, newCommitment, witness, attributeSubsetRaw) == True
+    assert scheme.verifySubset(secretKey, newCommitment, witness, requiredAttributeSubsetRaw) == True
+    assert scheme.verifySubset(secretKey, differentNewCommitment, differentWitness, requiredAttributeSubsetRaw) == True

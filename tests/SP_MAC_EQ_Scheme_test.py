@@ -1,31 +1,39 @@
 from charm.toolbox.pairinggroup import PairingGroup, ZR
 from SP_MAC_EQ_Scheme import SP_MAC_EQ
+import pytest
+
+@pytest.fixture
+def group():
+    return PairingGroup('SS512')
+
+@pytest.fixture
+def scheme(group):
+    return SP_MAC_EQ(group)
+
+@pytest.fixture
+def attributes():
+    return ["18", "Danish", "Plumber"]
+
+def test_mac_verifies_correctly(scheme, attributes):
+
+    secretKey = scheme.keyGen(len(attributes))
+
+    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes)
+
+    assert scheme.verify(secretKey, encodedMessages, tagR, tagT)
 
 
-def test_mac_verifies_correctly():
-    group = PairingGroup('SS512')
-    scheme = SP_MAC_EQ(group)
+def test_changed_representation_also_verifies(group, scheme, attributes):
 
-    attributes = ["18", "Danish", "Plumber"]
-    secret_key = scheme.keyGen(len(attributes))
+    
+    secretKey = scheme.keyGen(len(attributes))
 
-    encoded_messages, tag_r, tag_t = scheme.createMac(secret_key, attributes)
-
-    assert scheme.verify(secret_key, encoded_messages, tag_r, tag_t)
-
-
-def test_changed_representation_also_verifies():
-    group = PairingGroup('SS512')
-    scheme = SP_MAC_EQ(group)
-
-    attributes = ["18", "Danish", "Plumber"]
-    secret_key = scheme.keyGen(len(attributes))
-
-    encoded_messages, tag_r, tag_t = scheme.createMac(secret_key, attributes)
+    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes)
 
     mu = group.random(ZR)
-    changed_messages, new_tag_r, new_tag_t = scheme.changeRepresentation(
-        encoded_messages, tag_r, tag_t, mu
+
+    changedMessages, newTagR, newTagT = scheme.changeRepresentation(
+        encodedMessages, tagR, tagT, mu
     )
 
-    assert scheme.verify(secret_key, changed_messages, new_tag_r, new_tag_t)
+    assert scheme.verify(secretKey, changedMessages, newTagR, newTagT)
