@@ -3,7 +3,7 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "bachelor-dev",
   "workspaceFolder": "/workspace",
-  "remoteUser": "devuser",
+  "remoteUser": "root",
   "customizations": {
     "vscode": {
       "extensions": [
