@@ -26,3 +26,5 @@ def test_two_differently_randomized_commitments_both_verifies():
 
     assert scheme.verifySubset(secretKey, newCommitment, witness, requiredAttributeSubsetRaw) == True
     assert scheme.verifySubset(secretKey, differentNewCommitment, differentWitness, requiredAttributeSubsetRaw) == True
+
+
