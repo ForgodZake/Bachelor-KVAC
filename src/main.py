@@ -28,3 +28,5 @@ print("newTagT: ", newTagT)
 print("Verify rerandomized tags:", schemeConstruct.verify(secretKey, changedMessages, newTagR, newTagT))
 
 i = "just checking"
+
+"checking if everything works!!!!"
