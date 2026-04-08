@@ -1,5 +1,8 @@
-venv/
-__pycache__/
+venv
+__pycache__
+.pytest_cache
 *.pyc
-.git/
-.vscode/
+.git
+.pytest_cache
+src/__pycache__
+tests/__pycache__

@@ -1,0 +1,15 @@
+{
+  "name": "bachelor-dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "bachelor-dev",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "devuser",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  }
+}

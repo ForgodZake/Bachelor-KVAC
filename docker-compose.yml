@@ -1,0 +1,11 @@
+services:
+  bachelor-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bachelor-dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    stdin_open: true
+    tty: true
