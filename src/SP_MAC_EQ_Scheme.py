@@ -15,7 +15,7 @@ class SP_MAC_EQ:
         
         return secretKey
 
-    def createMac(self, secretKey, rawMessage):
+    def createMac(self, secretKey, rawMessage, randomScalar):
 
         # the raw message string, is hashed via the group hash to introduce randomness, 
         # The hash is implicity matched to an element in G1 via charm algorithm.
@@ -24,13 +24,12 @@ class SP_MAC_EQ:
         # Compute the wheighted sum (sum_i x_i * M_i)
         wheightedSum = self.computeWheightedSum(secretKey, encodedMessages)
 
-        # get a random element from the prime modular group as scalar
-        modularScalar = self.group.random(ZR)
+
         # compute the inverse via the group order 
-        modularScalarInverse = modularScalar ** -1
+        modularScalarInverse = randomScalar ** -1
 
         # create the two tags
-        tagR = wheightedSum * modularScalar
+        tagR = wheightedSum * randomScalar
         tagT = self.g2 * modularScalarInverse
 
         return encodedMessages, tagR, tagT

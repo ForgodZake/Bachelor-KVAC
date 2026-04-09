@@ -14,21 +14,25 @@ def scheme(group):
 def attributes():
     return ["18", "Danish", "Plumber"]
 
-def test_mac_verifies_correctly(scheme, attributes):
+@pytest.fixture
+def randomScalar(group):
+    return group.random(ZR)
+
+def test_mac_verifies_correctly(scheme, attributes, randomScalar):
 
     secretKey = scheme.keyGen(len(attributes))
 
-    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes)
+    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes, randomScalar)
 
     assert scheme.verify(secretKey, encodedMessages, tagR, tagT)
 
 
-def test_changed_representation_also_verifies(group, scheme, attributes):
+def test_changed_representation_also_verifies(group, scheme, attributes, randomScalar):
 
     
     secretKey = scheme.keyGen(len(attributes))
 
-    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes)
+    encodedMessages, tagR, tagT = scheme.createMac(secretKey, attributes, randomScalar)
 
     mu = group.random(ZR)
 
