@@ -15,7 +15,7 @@ class DVSC:
         for i in range(upperBound):
             basisElement *= secretKey
             commitmentBasis.append(basisElement)
-
+        #return commitment basis
         return commitmentBasis
 
     def hashForChallenge(self, announcementSequence, commitmentBasis):
