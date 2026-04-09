@@ -105,15 +105,14 @@ class DVSC:
         # Create and return commitment
         commitment = self.createCommitment(coefficients, commitmentBasis)   
 
-        return commitment
+        return commitment, self.GPrime
 
-    def randomize(self, commitment, randomScalarMu):
+    def randomize(self, commitment1, commitment2, randomScalarMu):
 
-        # randomice commitment with given scalar
-        newCommitment = commitment * randomScalarMu
-        newGPrime = self.GPrime * randomScalarMu
+        newCommitment1 = commitment1 * randomScalarMu
+        newCommitment2 = commitment2 * randomScalarMu
 
-        return newCommitment, newGPrime
+        return newCommitment1, newCommitment2
 
     def openSubset(self, commitmentBasis, attributes, attributeSubset, randomScalarMu):
 
@@ -137,7 +136,7 @@ class DVSC:
         # Hash the disclosed attributes and build the subset polynomial f_D(X)
         attributesSubset = [self.group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
         coefficients = self.createPolynomial(attributesSubset)
-
+    
         # Evaluate f_D at the secret key v and combine it with the witness
         # to reconstruct the commitment value that should match C'
         polynomialAtSecret = self.evaluatePolynomial(coefficients, secretKey)

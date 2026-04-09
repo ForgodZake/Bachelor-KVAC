@@ -17,8 +17,8 @@ def test_two_differently_randomized_commitments_both_verifies():
 
     assert randomScalarMu != differentRandomScalarMu
 
-    newCommitment, _ = scheme.randomize(commitment, randomScalarMu)
-    differentNewCommitment, _ = scheme.randomize(commitment, differentRandomScalarMu)
+    newCommitment, _ = scheme.randomize(*commitment, randomScalarMu)
+    differentNewCommitment, _ = scheme.randomize(*commitment, differentRandomScalarMu)
 
     requiredAttributeSubsetRaw = ["age"]
     witness = scheme.openSubset(commitmentBasis, attributeList, requiredAttributeSubsetRaw, randomScalarMu)

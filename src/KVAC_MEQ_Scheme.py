@@ -27,16 +27,25 @@ class KVAC_MEQ:
         sR = randomR + (challenge * randomScalar)
 
         return challenge, sA, sX1, sX2, sR
-
-        
-    def hashForChallenge(self, announcementSequence):
-
-        # creates a combined hash of announementSequence and commitmentBasis,
-        # using a serialized byte representasion
-        byteRepresentation = b""
-        for announcementElement in announcementSequence:
-            byteRepresentation += self.group.serialize(announcementElement)
+    
+    # fix this shit!!!!!!!!!!!!!!!!!!!!!!!
+    def hashForChallenge(self, obj):
+        byteRepresentation = self._toBytes(obj)
         return self.group.hash(byteRepresentation, ZR)
+
+    def _toBytes(self, obj):
+        if isinstance(obj, str):
+            return obj.encode("utf-8")
+
+        if isinstance(obj, (list, tuple)):
+            result = b""
+            for item in obj:
+                result += self._toBytes(item)
+            return result
+
+        return self.group.serialize(obj)
+
+    
 
     def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
         c1, c2 = commitment
@@ -55,29 +64,29 @@ class KVAC_MEQ:
 
         #compute the MEQ ipar as stated in the book
         randomSaclarR = self.group.random(ZR)
-        ipar_MEQ = (sk_MEQ[0] * self.G1) + (sk_MEQ[1] * self.Gprime) + (r * self.Gpprime)
+        ipar_MEQ = (sk_MEQ[0] * self.G1) + (sk_MEQ[1] * self.Gprime) + (randomSaclarR * self.Gpprime)
 
         isk = (sk_MEQ, sk_DVSC, randomSaclarR)
         ipar = (ipar_MEQ, ipar_DVSC)
         return isk, ipar
     
-    def issueCred(self, attributesRaw, isk, ipar):
-        #parse the secret keys and ipar
-        sk_MEQ, sk_DVSC, randomSaclarR  = isk
-        ipar_MEQ, ipar_DVSC = ipar
+    def issueCred(self, attributesRaw, isk, ipar_DVSC):
 
-        #compute the commitment from the DVSC scheme
-        commitment = self.Scheme_DVSC.commit(ipar_DVSC, attributesRaw)
+        #parse the secret keys and ipar
+        sk_MEQ, _, randomSaclarR  = isk
+        challenge, response, commitmentBasis = ipar_DVSC
+
+        #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
+        commitment = self.Scheme_DVSC.commit(challenge, response, commitmentBasis, attributesRaw)
 
         randomScalarA = self.group.random(ZR)
 
         #compute the tag from the MEQ scheme
         encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, commitment, randomScalarA)
 
-        #proof time :)
-        parameters = (sk_MEQ, randomSaclarR, commitment, tagR)
-
-        x, t1, t2 = self.sigmaProtocol(randomScalarA, parameters)
+      
+        # Proof time :)
+        x, t1, t2 = self.sigmaProtocol(randomScalarA, *sk_MEQ, randomSaclarR, commitment, tagR)
 
     
         randomA = self.group.random(ZR)
@@ -87,24 +96,24 @@ class KVAC_MEQ:
 
         randomParameters = (randomX1, randomX2, randomR, commitment, tagR)
 
-        randomAnnouncement  = self.sigmaProtocol(randomA, randomParameters)
+        randomAnnouncement  = self.sigmaProtocol(randomA, *randomParameters)
 
-        announcementSequence = (attributesRaw, x, commitment, tagR, t1, t2, randomAnnouncement)
+        announcementSequence = (attributesRaw, x, commitment, tagR, t1, t2, *randomAnnouncement)
 
         challenge = self.hashForChallenge(announcementSequence)
 
-        responseSequence = (randomSaclarR, challenge, randomScalarA, sk_MEQ)
+        responseSequence = (randomSaclarR, challenge, randomScalarA, *sk_MEQ)
 
         randomResponseSequence = (randomA, randomX1, randomX2, randomR)
 
         response = self.buildResponse(responseSequence, randomResponseSequence)
 
-        return tagR, tagT, response, encodedMessages
+        return tagR, tagT, response, encodedMessages, commitment
     
     
     def obtainCred(self, attributesRaw, ipar_DVSC):
 
-        commitment = self.Scheme_DVSC.commit(ipar_DVSC, attributesRaw)
+        commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
 
         if commitment is None:
             return None
@@ -119,18 +128,19 @@ class KVAC_MEQ:
 
         randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, mu)
 
-        ranomizedCommitment = self.Scheme_DVSC.randomize(commitment, mu)
+        ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, mu)
 
         witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, mu)
 
         return randomizedTag, ranomizedCommitment, witness
     
     
-    def verify(self, ranomizedTag, randomizedCommitment, witness, subset, isk):
+    def verify(self, randomizedTag, randomizedCommitment, witness, subset, isk):
 
-        sk_MEQ, sk_DVSC = isk
+        sk_MEQ, sk_DVSC, _ = isk
+        _, tagR, tagT = randomizedTag
 
-        verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, randomizedCommitment, ranomizedTag)
+        verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, randomizedCommitment, tagR, tagT)
 
         verifySubset = self.Scheme_DVSC.verifySubset(sk_DVSC, randomizedCommitment, witness, subset)
 
