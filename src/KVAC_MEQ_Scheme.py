@@ -31,22 +31,30 @@ class KVAC_MEQ:
 
         return challenge, sA, sX1, sX2, sR
     
-    # fix this shit!!!!!!!!!!!!!!!!!!!!!!!
-    def hashForChallenge(self, obj):
-        byteRepresentation = self._toBytes(obj)
+
+    def hashForChallenge(self, announcementSequence):
+
+        # convert announcement to byterepresentation for hashing
+        byteRepresentation = self.toBytes(announcementSequence)
+
         return self.group.hash(byteRepresentation, ZR)
 
-    def _toBytes(self, obj):
-        if isinstance(obj, str):
-            return obj.encode("utf-8")
+    def toBytes(self, announcementSequence):
 
-        if isinstance(obj, (list, tuple)):
+        # If announcementSequence is string encode 
+        if isinstance(announcementSequence, str):
+            return announcementSequence.encode("utf-8")
+
+        # If announcementSequence is list or tuble recursively access each element,
+        # and concatenate encoding/serialization to result.
+        if isinstance(announcementSequence, (list, tuple)):
             result = b""
-            for item in obj:
-                result += self._toBytes(item)
+            for item in announcementSequence:
+                result += self.toBytes(item) + b"||"
             return result
 
-        return self.group.serialize(obj)
+        # Otherwise serialize elements from group objects (G1, G2, ZR elements)
+        return self.group.serialize(announcementSequence)
 
 
     def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
@@ -93,7 +101,6 @@ class KVAC_MEQ:
         randomScalarA = self.group.random(ZR)
         randomScalarAInverse = randomScalarA ** -1
 
-        
         #compute the tag from the MEQ scheme
         encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
       
