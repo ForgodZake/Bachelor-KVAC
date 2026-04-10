@@ -48,7 +48,6 @@ class KVAC_MEQ:
 
         return self.group.serialize(obj)
 
-    
 
     def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
 
@@ -86,24 +85,27 @@ class KVAC_MEQ:
         #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
         commitment = self.Scheme_DVSC.commit(challenge, response, commitmentBasis, attributesRaw)
 
+        #check commitment is valid
+        if commitment is None:
+            return None
+
+        #get the random scalar A and make it inverse
         randomScalarA = self.group.random(ZR)
         randomScalarAInverse = randomScalarA ** -1
 
+        
         #compute the tag from the MEQ scheme
-        encodedMessages = list(commitment)
-        wheightedSum = self.Scheme_MEQ.computeWheightedSum(sk_MEQ, encodedMessages)
-        tagR = wheightedSum * randomScalarA
-        tagT = self.Scheme_MEQ.g2 * (randomScalarAInverse)
+        encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
       
         # Proof time :)
         #sample to get the needed variables
-        randomA = self.group.random(ZR)
+        randomAInverseProof = self.group.random(ZR)
         randomX1 = self.group.random(ZR)
         randomX2= self.group.random(ZR)
         randomR = self.group.random(ZR)
 
         #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
-        randomParameters = (randomA, randomX1, randomX2, randomR, commitment, tagR)
+        randomParameters = (randomAInverseProof, randomX1, randomX2, randomR, commitment, tagR)
 
         #Compute the sigma protocol
         randomAnnouncement  = self.sigmaProtocol(*randomParameters)
@@ -116,7 +118,7 @@ class KVAC_MEQ:
 
         #Make the two sequences that are needed to make the full Pi proof
         responseSequence = (randomSaclarR, challenge, randomScalarAInverse, *sk_MEQ)
-        randomResponseSequence = (randomA, randomX1, randomX2, randomR)
+        randomResponseSequence = (randomAInverseProof, randomX1, randomX2, randomR)
 
         #Build the final PI response
         response = self.buildPIResponse(responseSequence, randomResponseSequence)
@@ -162,9 +164,11 @@ class KVAC_MEQ:
         mu = self.group.random(ZR)
 
         _,_, commitmentBasis = ipar_DVSC
+
         #compute the randomized tag
         randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, mu)
 
+        #make a commitment
         commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
         #compute randomized commitment
         ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, mu)

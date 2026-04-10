@@ -15,14 +15,11 @@ class SP_MAC_EQ:
         
         return secretKey
 
-    def createMac(self, secretKey, rawMessage, randomScalar):
+    def createMac(self, secretKey, encodedMessage, randomScalar):
 
-        # the raw message string, is hashed via the group hash to introduce randomness, 
-        # The hash is implicity matched to an element in G1 via charm algorithm.
-        encodedMessages = [self.group.hash(message, G1) for message in rawMessage]
-
+        
         # Compute the wheighted sum (sum_i x_i * M_i)
-        wheightedSum = self.computeWheightedSum(secretKey, encodedMessages)
+        wheightedSum = self.computeWheightedSum(secretKey, encodedMessage)
 
 
         # compute the inverse via the group order 
@@ -32,7 +29,7 @@ class SP_MAC_EQ:
         tagR = wheightedSum * randomScalar
         tagT = self.g2 * modularScalarInverse
 
-        return encodedMessages, tagR, tagT
+        return encodedMessage, tagR, tagT
 
     def verify(self, secretKey, encodedMessages, tagR, tagT):
 
@@ -65,7 +62,7 @@ class SP_MAC_EQ:
         # return new representation
         return changedMessages, newTagR, newTagT
 
-    def computeWheightedSum(self, secretKey, encodedMessages):
+    def computeWheightedSum(self, secretKey, rawMessages):
 
         # get the base element in G1
         baseElement = self.group.init(G1, 1) 
@@ -74,8 +71,8 @@ class SP_MAC_EQ:
         # for each message check that it's not the base element, if not,
         # sum up all the encoded messages with correspnding secretKey
         for i in range(0, len(secretKey)):
-            if encodedMessages[i] == baseElement:
+            if rawMessages[i] == baseElement:
                 break
-            wheightedSum +=  encodedMessages[i] * secretKey[i]
+            wheightedSum +=  rawMessages[i] * secretKey[i]
 
         return wheightedSum
