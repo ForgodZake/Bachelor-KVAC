@@ -80,16 +80,15 @@ class KVAC_MEQ:
         commitment = self.Scheme_DVSC.commit(challenge, response, commitmentBasis, attributesRaw)
 
         randomScalarA = self.group.random(ZR)
+        randomScalarAInverse = randomScalarA ** -1
 
         #compute the tag from the MEQ scheme
         encodedMessages = list(commitment)
         wheightedSum = self.Scheme_MEQ.computeWheightedSum(sk_MEQ, encodedMessages)
         tagR = wheightedSum * randomScalarA
-        tagT = self.Scheme_MEQ.g2 * (randomScalarA ** -1)
+        tagT = self.Scheme_MEQ.g2 * (randomScalarAInverse)
       
         # Proof time :)
-        x, t1, t2 = self.sigmaProtocol(randomScalarA, *sk_MEQ, randomSaclarR, commitment, tagR)
-    
         randomA = self.group.random(ZR)
         randomX1 = self.group.random(ZR)
         randomX2= self.group.random(ZR)
@@ -103,7 +102,7 @@ class KVAC_MEQ:
 
         challenge = self.hashForChallenge(announcementSequence)
 
-        responseSequence = (randomSaclarR, challenge, randomScalarA, *sk_MEQ)
+        responseSequence = (randomSaclarR, challenge, randomScalarAInverse, *sk_MEQ)
 
         randomResponseSequence = (randomA, randomX1, randomX2, randomR)
 
