@@ -18,9 +18,12 @@ class KVAC_MEQ:
         self.Scheme_MEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
 
     def buildPIResponse(self, responseSequence, randomResponseSequence):
+
+        #get needed variables
         randomScalar, challenge, tagRandom, x1, x2 = responseSequence
         randomA, randomX1, randomX2, randomR = randomResponseSequence
 
+        #compute the different components of PI proof
         sA = (randomA) + (challenge * tagRandom)
         sX1 = randomX1 + (challenge * x1)
         sX2 = randomX2 + (challenge * x2)
@@ -48,9 +51,13 @@ class KVAC_MEQ:
     
 
     def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
+
         c1, c2 = commitment
+        #compute X = x1 * G1 + x2 * G' + r * G''
         x = (x1 * self.g1) + (x2 * self.gPrime) + (r * self.gPPrime)
+        #T is the same as tag T
         t1 = randomScalar * self.g2
+        #compute x1 * C1 + x2 * C2
         t2 = (x1 * c1) + (x2 * c2) - (randomScalar * tagR)
         return x, t1, t2
 
@@ -89,23 +96,29 @@ class KVAC_MEQ:
         tagT = self.Scheme_MEQ.g2 * (randomScalarAInverse)
       
         # Proof time :)
+        #sample to get the needed variables
         randomA = self.group.random(ZR)
         randomX1 = self.group.random(ZR)
         randomX2= self.group.random(ZR)
         randomR = self.group.random(ZR)
 
+        #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
         randomParameters = (randomA, randomX1, randomX2, randomR, commitment, tagR)
 
+        #Compute the sigma protocol
         randomAnnouncement  = self.sigmaProtocol(*randomParameters)
 
+        #Build sequence needed for the challenge (S, X, C, R, T, A)
         announcementSequence = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, randomAnnouncement)
 
+        #Hash the sequence to get the challenge
         challenge = self.hashForChallenge(announcementSequence)
 
+        #Make the two sequences that are needed to make the full Pi proof
         responseSequence = (randomSaclarR, challenge, randomScalarAInverse, *sk_MEQ)
-
         randomResponseSequence = (randomA, randomX1, randomX2, randomR)
 
+        #Build the final PI response
         response = self.buildPIResponse(responseSequence, randomResponseSequence)
 
         return tagR, tagT, response, encodedMessages, commitment
@@ -113,54 +126,50 @@ class KVAC_MEQ:
     
     def obtainCred(self, attributesRaw, ipar_DVSC, ipar_MEQ, response, tagR, tagT):
 
+        #get needed variables
         responseChallenge, responseSA, responseSX1, reponseSX2, responseSR = response
 
+        #make commitment
         commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
 
+        #check that ipar_dvsc is valid
         if commitment is None:
             return None
 
-        print("Commitment: ", commitment)
-
+        #Compute the first part for verifying the PI proof
         sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(responseSA, responseSX1, reponseSX2, responseSR, commitment, tagR)
-
-        print("SigmaX: ", sigmaX)
-        print("SigmaT1: ", sigmaT1)
-        print("SigmaT2: ", sigmaT2)
-
+    
         # unique accepting Sigma protocol announcement (UASPA)
         ipar_MEQ_UASPA = sigmaX - responseChallenge * ipar_MEQ
         tagT_UASPA = sigmaT1 - responseChallenge * tagT
         zero_UASPA = sigmaT2
 
-        print("ipar_MEQ_UASPA: ", ipar_MEQ_UASPA)
-        print("tagT_UASPA: ", tagT_UASPA)
-        print("zero_UASPA: ", zero_UASPA)
-        
+        #make the sequence that is needed for the new challenge
         verifyChallengeAnnouncementSeq = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, (ipar_MEQ_UASPA, tagT_UASPA, zero_UASPA))
 
+        #hash the sequence
         newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
 
-        print("responseChallenge:", responseChallenge)
-        print("newChallenge:", newChallenge)
-        print("Did it Pass", responseChallenge == newChallenge)
-        
-
+        #check that the new challenge is the same as the challenge computed on the issuer side
         if responseChallenge != newChallenge:
             return None
         
-        return commitment
+        return tagR, tagT
     
 
-    def showCred(self, tagR, tagT, attributesRaw, subset, encodedMessages, commitmentBasis, commitment):
-
+    def showCred(self, tagR, tagT, attributesRaw, subset, encodedMessages, ipar_DVSC):
+        #get random scalar
         mu = self.group.random(ZR)
 
-
+        _,_, commitmentBasis = ipar_DVSC
+        #compute the randomized tag
         randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, mu)
 
+        commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
+        #compute randomized commitment
         ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, mu)
 
+        #compute witness
         witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, mu)
 
         return randomizedTag, ranomizedCommitment, witness
@@ -171,6 +180,7 @@ class KVAC_MEQ:
         sk_MEQ, sk_DVSC, _ = isk
         changedMessages, tagR, tagT = randomizedTag
 
+        #use functions from other two scheme to verify the subset and commtiment
         verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, changedMessages, tagR, tagT)
         verifySubset = self.Scheme_DVSC.verifySubset(
             sk_DVSC, randomizedCommitment[0], witness, subset

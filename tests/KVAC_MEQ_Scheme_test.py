@@ -11,7 +11,6 @@ def test_hopeItWorks():
 
     isk, ipar = scheme.keyGen(len(attributeList))
     ipar_MEQ, ipar_DVSC = ipar
-    _, _, commitmentBasis = ipar_DVSC
 
     tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(attributeList, isk, ipar_DVSC, ipar_MEQ)
 
@@ -22,7 +21,7 @@ def test_hopeItWorks():
     assert checkedCommmitment is not None
 
     randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, attributeList, subset, encodedMessages, commitmentBasis, checkedCommmitment
+        tagR, tagT, attributeList, subset, encodedMessages, ipar_DVSC
     )
 
     assert scheme.verify(randomizedTag, randomizedCommitment, witness, subset, isk) == True
