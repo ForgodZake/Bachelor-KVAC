@@ -2,11 +2,11 @@ from charm.toolbox.pairinggroup import G1, G2, ZR, pair
 
 class SP_MAC_EQ:
 
-    def __init__(self, groupObject):
+    def __init__(self, groupObject, g1Element, g2Element):
         # Create bilinary groups
         self.group = groupObject
-        self.g1 = self.group.random(G1)
-        self.g2 = self.group.random(G2)
+        self.g1 = g1Element
+        self.g2 = g2Element
         
     def keyGen(self, length):
 

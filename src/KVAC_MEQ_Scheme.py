@@ -9,15 +9,15 @@ class KVAC_MEQ:
     def __init__(self, groupObject):
         
         self.group = groupObject
-        self.G1 = self.group.random(G1)
-        self.G2 = self.group.random(G2)
-        self.Gprime = self.group.random(G1)
-        self.Gpprime = self.group.random(G1)
+        self.g1 = self.group.random(G1)
+        self.g2 = self.group.random(G2)
+        self.gPrime = self.group.random(G1)
+        self.gPPrime = self.group.random(G1)
 
-        self.Scheme_DVSC = DVSC(self.group)
-        self.Scheme_MEQ = SP_MAC_EQ(self.group)
+        self.Scheme_DVSC = DVSC(self.group, self.g1, self.gPrime)
+        self.Scheme_MEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
 
-    def buildResponse(self, responseSequence, randomResponseSequence):
+    def buildPIResponse(self, responseSequence, randomResponseSequence):
         randomScalar, challenge, tagRandom, x1, x2 = responseSequence
         randomA, randomX1, randomX2, randomR = randomResponseSequence
 
@@ -49,8 +49,8 @@ class KVAC_MEQ:
 
     def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
         c1, c2 = commitment
-        x = (x1 * self.G1) + (x2 * self.Gprime) + (r * self.Gpprime)
-        t1 = randomScalar * self.G2
+        x = (x1 * self.g1) + (x2 * self.gPrime) + (r * self.gPPrime)
+        t1 = randomScalar * self.g2
         t2 = (x1 * c1) + (x2 * c2) - (randomScalar * tagR)
         return x, t1, t2
 
@@ -64,13 +64,13 @@ class KVAC_MEQ:
 
         #compute the MEQ ipar as stated in the book
         randomSaclarR = self.group.random(ZR)
-        ipar_MEQ = (sk_MEQ[0] * self.G1) + (sk_MEQ[1] * self.Gprime) + (randomSaclarR * self.Gpprime)
+        ipar_MEQ = (sk_MEQ[0] * self.g1) + (sk_MEQ[1] * self.gPrime) + (randomSaclarR * self.gPPrime)
 
         isk = (sk_MEQ, sk_DVSC, randomSaclarR)
         ipar = (ipar_MEQ, ipar_DVSC)
         return isk, ipar
     
-    def issueCred(self, attributesRaw, isk, ipar_DVSC):
+    def issueCred(self, attributesRaw, isk, ipar_DVSC, ipar_MEQ):
 
         #parse the secret keys and ipar
         sk_MEQ, _, randomSaclarR  = isk
@@ -82,23 +82,24 @@ class KVAC_MEQ:
         randomScalarA = self.group.random(ZR)
 
         #compute the tag from the MEQ scheme
-        encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, commitment, randomScalarA)
-
+        encodedMessages = list(commitment)
+        wheightedSum = self.Scheme_MEQ.computeWheightedSum(sk_MEQ, encodedMessages)
+        tagR = wheightedSum * randomScalarA
+        tagT = self.Scheme_MEQ.g2 * (randomScalarA ** -1)
       
         # Proof time :)
         x, t1, t2 = self.sigmaProtocol(randomScalarA, *sk_MEQ, randomSaclarR, commitment, tagR)
-
     
         randomA = self.group.random(ZR)
         randomX1 = self.group.random(ZR)
         randomX2= self.group.random(ZR)
         randomR = self.group.random(ZR)
 
-        randomParameters = (randomX1, randomX2, randomR, commitment, tagR)
+        randomParameters = (randomA, randomX1, randomX2, randomR, commitment, tagR)
 
-        randomAnnouncement  = self.sigmaProtocol(randomA, *randomParameters)
+        randomAnnouncement  = self.sigmaProtocol(*randomParameters)
 
-        announcementSequence = (attributesRaw, x, commitment, tagR, t1, t2, *randomAnnouncement)
+        announcementSequence = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, randomAnnouncement)
 
         challenge = self.hashForChallenge(announcementSequence)
 
@@ -106,16 +107,47 @@ class KVAC_MEQ:
 
         randomResponseSequence = (randomA, randomX1, randomX2, randomR)
 
-        response = self.buildResponse(responseSequence, randomResponseSequence)
+        response = self.buildPIResponse(responseSequence, randomResponseSequence)
 
         return tagR, tagT, response, encodedMessages, commitment
     
     
-    def obtainCred(self, attributesRaw, ipar_DVSC):
+    def obtainCred(self, attributesRaw, ipar_DVSC, ipar_MEQ, response, tagR, tagT):
+
+        responseChallenge, responseSA, responseSX1, reponseSX2, responseSR = response
 
         commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
 
         if commitment is None:
+            return None
+
+        print("Commitment: ", commitment)
+
+        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(responseSA, responseSX1, reponseSX2, responseSR, commitment, tagR)
+
+        print("SigmaX: ", sigmaX)
+        print("SigmaT1: ", sigmaT1)
+        print("SigmaT2: ", sigmaT2)
+
+        # unique accepting Sigma protocol announcement (UASPA)
+        ipar_MEQ_UASPA = sigmaX - responseChallenge * ipar_MEQ
+        tagT_UASPA = sigmaT1 - responseChallenge * tagT
+        zero_UASPA = sigmaT2
+
+        print("ipar_MEQ_UASPA: ", ipar_MEQ_UASPA)
+        print("tagT_UASPA: ", tagT_UASPA)
+        print("zero_UASPA: ", zero_UASPA)
+        
+        verifyChallengeAnnouncementSeq = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, (ipar_MEQ_UASPA, tagT_UASPA, zero_UASPA))
+
+        newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
+
+        print("responseChallenge:", responseChallenge)
+        print("newChallenge:", newChallenge)
+        print("Did it Pass", responseChallenge == newChallenge)
+        
+
+        if responseChallenge != newChallenge:
             return None
         
         return commitment
@@ -133,18 +165,19 @@ class KVAC_MEQ:
         witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, mu)
 
         return randomizedTag, ranomizedCommitment, witness
-    
-    
+
+
     def verify(self, randomizedTag, randomizedCommitment, witness, subset, isk):
 
         sk_MEQ, sk_DVSC, _ = isk
-        _, tagR, tagT = randomizedTag
+        changedMessages, tagR, tagT = randomizedTag
 
-        verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, randomizedCommitment, tagR, tagT)
+        verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, changedMessages, tagR, tagT)
+        verifySubset = self.Scheme_DVSC.verifySubset(
+            sk_DVSC, randomizedCommitment[0], witness, subset
+        )
 
-        verifySubset = self.Scheme_DVSC.verifySubset(sk_DVSC, randomizedCommitment, witness, subset)
-
-        return True if verifySubset == True and verifyMEQ == True else False
+        return verifyMEQ and verifySubset
 
 
 

@@ -1,4 +1,4 @@
-from charm.toolbox.pairinggroup import PairingGroup, ZR
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2
 from SP_MAC_EQ_Scheme import SP_MAC_EQ
 import pytest
 
@@ -8,7 +8,9 @@ def group():
 
 @pytest.fixture
 def scheme(group):
-    return SP_MAC_EQ(group)
+    g1 = group.random(G1)
+    g2 = group.random(G2)
+    return SP_MAC_EQ(group, g1, g2)
 
 @pytest.fixture
 def attributes():

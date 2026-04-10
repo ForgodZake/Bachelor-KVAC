@@ -2,10 +2,10 @@ from charm.toolbox.pairinggroup import G1, ZR
 
 class DVSC:
 
-    def __init__(self, groupObject):
+    def __init__(self, groupObject, g1Element, gPrimeElement):
         self.group = groupObject
-        self.G = self.group.random(G1)
-        self.GPrime = self.group.random(G1)
+        self.G = g1Element
+        self.GPrime = gPrimeElement
 
     def buildCommitmentBasis(self, secretKey, upperBound):
 

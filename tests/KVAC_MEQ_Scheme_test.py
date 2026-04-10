@@ -10,15 +10,19 @@ def test_hopeItWorks():
     subset = ["age"]
 
     isk, ipar = scheme.keyGen(len(attributeList))
-    _, ipar_DVSC = ipar
+    ipar_MEQ, ipar_DVSC = ipar
     _, _, commitmentBasis = ipar_DVSC
 
-    tagR, tagT, _, encodedMessages, commitment = scheme.issueCred(attributeList, isk, ipar_DVSC)
+    tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(attributeList, isk, ipar_DVSC, ipar_MEQ)
 
     assert commitment is not None
 
+    checkedCommmitment = scheme.obtainCred(attributeList, ipar_DVSC, ipar_MEQ, response, tagR, tagT)
+
+    assert checkedCommmitment is not None
+
     randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, attributeList, subset, encodedMessages, commitmentBasis, commitment
+        tagR, tagT, attributeList, subset, encodedMessages, commitmentBasis, checkedCommmitment
     )
 
     assert scheme.verify(randomizedTag, randomizedCommitment, witness, subset, isk) == True
