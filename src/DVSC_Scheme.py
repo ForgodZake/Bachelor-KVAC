@@ -61,9 +61,9 @@ class DVSC:
 
     def createCommitment(self, coefficients, commitmentBasis):
 
-        commitment = self.group.init(G1, 1)
+        commitment = self.group.init(G1)
 
-        # create commitment by scaing each basis element by the coefficient (f_i * V_i)
+        # create commitment by scaling each basis element by the coefficient (f_i * V_i)
         for i in range(len(coefficients)):
             commitment += coefficients[i] * commitmentBasis[i]
 
@@ -147,7 +147,7 @@ class DVSC:
     
     def evaluatePolynomial(self, coefficients, secretKey):
         
-        result = self.group.init(ZR, 0)
+        result = self.group.init(ZR)
         power = 1
 
         # compute the output of the polynomial with secretKey as input 
