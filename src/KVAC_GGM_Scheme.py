@@ -29,13 +29,13 @@ class KVAC_GGM:
     
     def buildCommitmentBasis(self, secretKey, upperBound, y):
 
-        basisElement = self.G
+        basisElement = y * self.G
         commitmentBasis = [basisElement]
 
         for i in range(upperBound):
-            yj = y * secretKey * basisElement
+            basisElement *= secretKey
 
-            commitmentBasis.append(yj)
+            commitmentBasis.append(basisElement)
         #return commitment basis
         return commitmentBasis
     
@@ -71,12 +71,12 @@ class KVAC_GGM:
 
         return result
     
-    def sigmaProtocol(self, commitment, ipar_R, basis, secret_x, secret_v):
-        sigma_C = secret_x * commitment
-        sigma_R = secret_x * ipar_R
+    def sigmaProtocol(self, commitment, ipar_R, basis, x, v):
+        sigma_C = x * commitment
+        sigma_R = x * ipar_R
         sigma_basis = []
         for i in range(len(basis)-1):
-            basisElement = secret_v * basis[i]
+            basisElement = v * basis[i]
             sigma_basis.append(basisElement)
 
         return sigma_C, sigma_R, sigma_basis        
@@ -162,13 +162,10 @@ class KVAC_GGM:
             commitment += coeff * baseElement
 
 
-        if commitment == self.group.init(G1, 0):
-                print('check whats up')
+        if commitment == self.group.init(G1):
                 return None
         
         sigmaAnnouncement_C, sigmaAnnouncement_R, sigmaAnnouncement_basis = self.sigmaProtocol(commitment, ipar_R, basis, response_x, response_v)
-
-    
 
         announcement_tag = sigmaAnnouncement_C - (challenge * tag)
         announcement_X = sigmaAnnouncement_R - (challenge * ipar_X)
@@ -183,15 +180,66 @@ class KVAC_GGM:
 
         userChallengeHash = self.hashForChallenge(userChallenge)
 
-        print('tag', tag)
-        print('basis', basis)
-
         if challenge != userChallengeHash:
-            print('yooo')
+        
             return None
         
-
         return tag, basis
+    
+    def openSubset(self, commitmentBasis, attributes, attributeSubset, randomScalarMu):
+
+        remainingAttributesRaw = []
+        # Create the set without the subset (S / D)
+        for i in range(len(attributes)):
+            if not (attributes[i] in attributeSubset):
+                remainingAttributesRaw.append(attributes[i])
+
+        # Hash the remaining attributes (needed as they are strings) and create the polynomial
+        remainingAttributes = [self.group.hash(attributeRaw, ZR) for attributeRaw in remainingAttributesRaw]
+        coefficients = self.createPolynomial(remainingAttributes)
+
+        # Create the witness by scaling the commitment with our random mu
+        witness = randomScalarMu * self.createCommitment(coefficients, commitmentBasis)
+
+        return witness
+    
+    def createCommitment(self, coefficients, commitmentBasis):
+
+        commitment = self.group.init(G1)
+
+        # create commitment by scaling each basis element by the coefficient (f_i * V_i)
+        for i in range(len(coefficients)):
+            commitment += coefficients[i] * commitmentBasis[i]
+
+        return commitment
+    
+    def showCred(self, tag, basis, attributesRaw, subset):
+
+        randomMu = self.group.random(ZR)
+        witness = self.openSubset(basis, attributesRaw, subset, randomMu)
+
+        randomizedTag = randomMu * tag
+
+        return randomizedTag, witness
+    
+    def verify(self, randomizedTag, witness, subset, isk):
+        if randomizedTag == self.group.init(G1):
+            return False
+        x, v = isk
+
+        # Hash attributes to ZR space
+        attributes = [self.group.hash(attribute, ZR) for attribute in subset]
+
+        coefficients = self.createPolynomial(attributes)
+        polynomial = self.evaluatePolynomial(coefficients, v)
+
+        check = x * witness * polynomial
+
+        if check == randomizedTag:
+            return True
+        
+        return False
+
         
 
 

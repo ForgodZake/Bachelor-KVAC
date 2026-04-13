@@ -16,3 +16,7 @@ def test_kvac():
 
     assert tag, basis is not None
 
+    randomizedTag, witness = scheme.showCred(tag, basis, attributeList, subset)
+
+    assert scheme.verify(randomizedTag, witness, subset, isk) == True
+
