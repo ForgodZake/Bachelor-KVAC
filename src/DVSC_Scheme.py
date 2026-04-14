@@ -1,15 +1,16 @@
 from charm.toolbox.pairinggroup import G1, ZR
+from PolyCommmitBase import PolyCommitBase
 
-class DVSC:
+class DVSC(PolyCommitBase):
 
     def __init__(self, groupObject, g1Element, gPrimeElement):
-        self.group = groupObject
-        self.G = g1Element
-        self.GPrime = gPrimeElement
+        
+        super().__init__(groupObject, g1Element)
+        self.gPrime = gPrimeElement
 
     def buildCommitmentBasis(self, secretKey, upperBound):
 
-        basisElement = self.G
+        basisElement = self.g1
         commitmentBasis = [basisElement]
 
         for i in range(upperBound):
@@ -38,36 +39,6 @@ class DVSC:
             sigmaSequence.append(sigmaI)
 
         return sigmaSequence
-    
-    def createPolynomial(self, attributes):
-        
-        coefficients = [1]
-
-        # for each attribute we update the polynomial degree,
-        # by doing currentPoly * (X - a)
-        for attribute in attributes:
-            # Set the length of the next degree poly
-            newCoefficients = [0] * (len(coefficients) + 1)
-            
-            # Update all the coefficients by currentPoly * (X - a)
-            for i in range(len(coefficients)):
-                newCoefficients[i] += -attribute * coefficients[i]
-                newCoefficients[i + 1] += coefficients[i]
-
-            # store and repeat
-            coefficients = newCoefficients
-
-        return coefficients
-
-    def createCommitment(self, coefficients, commitmentBasis):
-
-        commitment = self.group.init(G1)
-
-        # create commitment by scaling each basis element by the coefficient (f_i * V_i)
-        for i in range(len(coefficients)):
-            commitment += coefficients[i] * commitmentBasis[i]
-
-        return commitment
 
     def keyGen(self, upperBound):
 
@@ -84,10 +55,10 @@ class DVSC:
     def commit(self, challenge, response, commitmentBasis, attributesRaw):
 
         # Hash attributes to ZR space
-        attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
+        disclosedAttributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
 
         # Get polynomial coefficients
-        coefficients = self.createPolynomial(attributes)
+        coefficients = self.createPolynomial(disclosedAttributes)
 
         proposedChallenge = []
         sigmaOutPut = self.sigmaProtocol(response, commitmentBasis[:-1])
@@ -105,7 +76,7 @@ class DVSC:
         # Create and return commitment
         commitment = self.createCommitment(coefficients, commitmentBasis)   
 
-        return commitment, self.GPrime
+        return commitment, self.gPrime
 
     def randomize(self, commitment1, commitment2, randomScalarMu):
 
@@ -114,28 +85,11 @@ class DVSC:
 
         return newCommitment1, newCommitment2
 
-    def openSubset(self, commitmentBasis, attributes, attributeSubset, randomScalarMu):
-
-        remainingAttributesRaw = []
-        # Create the set without the subset (S / D)
-        for i in range(len(attributes)):
-            if not (attributes[i] in attributeSubset):
-                remainingAttributesRaw.append(attributes[i])
-
-        # Hash the remaining attributes (needed as they are strings) and create the polynomial
-        remainingAttributes = [self.group.hash(attributeRaw, ZR) for attributeRaw in remainingAttributesRaw]
-        coefficients = self.createPolynomial(remainingAttributes)
-
-        # Create the witness by scaling the commitment with our random mu
-        witness = randomScalarMu * self.createCommitment(coefficients, commitmentBasis)
-
-        return witness
-
     def verifySubset(self, secretKey, randomizedCommitment, witness, requiredAttributeSubsetRaw):
 
         # Hash the disclosed attributes and build the subset polynomial f_D(X)
-        attributesSubset = [self.group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
-        coefficients = self.createPolynomial(attributesSubset)
+        disclosedAttributeSubset = [self.group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
+        coefficients = self.createPolynomial(disclosedAttributeSubset)
     
         # Evaluate f_D at the secret key v and combine it with the witness
         # to reconstruct the commitment value that should match C'
@@ -144,15 +98,3 @@ class DVSC:
 
         # Check that the reconstructed commitment value matches the randomized commitment
         return True if randomizedCommitment == commitment else False
-    
-    def evaluatePolynomial(self, coefficients, secretKey):
-        
-        result = self.group.init(ZR)
-        power = 1
-
-        # compute the output of the polynomial with secretKey as input 
-        for coefficient in coefficients:
-            result += coefficient * power
-            power *= secretKey
-
-        return result

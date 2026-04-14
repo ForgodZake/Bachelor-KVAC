@@ -14,8 +14,8 @@ class KVAC_MEQ:
         self.gPrime = self.group.random(G1)
         self.gPPrime = self.group.random(G1)
 
-        self.Scheme_DVSC = DVSC(self.group, self.g1, self.gPrime)
-        self.Scheme_MEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
+        self.SchemeDVSC = DVSC(self.group, self.g1, self.gPrime)
+        self.SchemeMEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
 
     def buildPIResponse(self, responseSequence, randomResponseSequence):
 
@@ -69,82 +69,82 @@ class KVAC_MEQ:
         return x, t1, t2
     
 
-    def makeNIZK(self, sk_MEQ, commitment, ipar_MEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse):
+    def makeNIZK(self, sk_MEQ, commitment, iparMEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse):
 
         #sample to get the needed variables
-        randomAInverseProof = self.group.random(ZR)
-        randomX1 = self.group.random(ZR)
-        randomX2= self.group.random(ZR)
-        randomR = self.group.random(ZR)
+        randomProofAInverse = self.group.random(ZR)
+        randomProofX1 = self.group.random(ZR)
+        randomProofX2= self.group.random(ZR)
+        randomProofR = self.group.random(ZR)
 
         #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
-        randomParameters = (randomAInverseProof, randomX1, randomX2, randomR, commitment, tagR)
+        randomParameters = (randomProofAInverse, randomProofX1, randomProofX2, randomProofR, commitment, tagR)
 
         #Compute the sigma protocol
         randomAnnouncement  = self.sigmaProtocol(*randomParameters)
 
         #Build sequence needed for the challenge (S, X, C, R, T, A)
-        announcementSequence = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, randomAnnouncement)
+        announcementSequence = (attributesRaw, iparMEQ, *commitment, tagR, tagT, randomAnnouncement)
 
         #Hash the sequence to get the challenge
         challenge = self.hashForChallenge(announcementSequence)
 
         #Make the two sequences that are needed to make the full Pi proof
         responseSequence = (randomScalarR, challenge, randomScalarAInverse, *sk_MEQ)
-        randomResponseSequence = (randomAInverseProof, randomX1, randomX2, randomR)
+        randomResponseSequence = (randomProofAInverse, randomProofX1, randomProofX2, randomProofR)
         
-        #Build the final PI response
-        response = self.buildPIResponse(responseSequence, randomResponseSequence)
+        #Build the final PI response as the proof
+        finalProof = self.buildPIResponse(responseSequence, randomResponseSequence)
 
-        return response
+        return finalProof
 
         
-    def verifyNIZK(self, responseChallenge, responseSA, responseSX1, reponseSX2, responseSR, commitment, attributesRaw, tagR, tagT, ipar_MEQ):
+    def verifyNIZK(self, proofChallenge, proofSA, proofSX1, proofSX2, proofSR, commitment, attributesRaw, tagR, tagT, iparMEQ):
 
         #Compute the first part for verifying the PI proof
-        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(responseSA, responseSX1, reponseSX2, responseSR, commitment, tagR)
+        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(proofSA, proofSX1, proofSX2, proofSR, commitment, tagR)
     
         # unique accepting Sigma protocol announcement (UASPA)
-        ipar_MEQ_UASPA = sigmaX - responseChallenge * ipar_MEQ
-        tagT_UASPA = sigmaT1 - responseChallenge * tagT
+        iparMEQ_UASPA = sigmaX - proofChallenge * iparMEQ
+        tagT_UASPA = sigmaT1 - proofChallenge * tagT
         zero_UASPA = sigmaT2
 
         #make the sequence that is needed for the new challenge
-        verifyChallengeAnnouncementSeq = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, (ipar_MEQ_UASPA, tagT_UASPA, zero_UASPA))
+        verifyChallengeAnnouncementSeq = (attributesRaw, iparMEQ, *commitment, tagR, tagT, (iparMEQ_UASPA, tagT_UASPA, zero_UASPA))
 
         #hash the sequence
         newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
 
         #check that the new challenge is the same as the challenge computed on the issuer side
-        if responseChallenge != newChallenge:
+        if proofChallenge != newChallenge:
             return False
 
         return True
 
     def keyGen(self, attributeListSize):
         #make the secret key from MEQ scheme upperbound of 2
-        sk_MEQ = self.Scheme_MEQ.keyGen(2)
+        sk_MEQ = self.SchemeMEQ.keyGen(2)
 
         #get the ipar and secret key from DVSC scheme
-        sk_DVSC, challenge, response, commitmentBasis = self.Scheme_DVSC.keyGen(attributeListSize)
-        ipar_DVSC = (challenge, response, commitmentBasis)
+        sk_DVSC, challenge, response, commitmentBasis = self.SchemeDVSC.keyGen(attributeListSize)
+        iparDVSC = (challenge, response, commitmentBasis)
 
         #compute the MEQ ipar as stated in the book
-        randomSaclarR = self.group.random(ZR)
-        ipar_MEQ = (sk_MEQ[0] * self.g1) + (sk_MEQ[1] * self.gPrime) + (randomSaclarR * self.gPPrime)
+        randomScalarR = self.group.random(ZR)
+        iparMEQ = (sk_MEQ[0] * self.g1) + (sk_MEQ[1] * self.gPrime) + (randomScalarR * self.gPPrime)
 
-        isk = (sk_MEQ, sk_DVSC, randomSaclarR)
-        ipar = (ipar_MEQ, ipar_DVSC)
+        isk = (sk_MEQ, sk_DVSC, randomScalarR)
+        ipar = (iparMEQ, iparDVSC)
         return isk, ipar
     
-    def issueCred(self, attributesRaw, isk, ipar_DVSC, ipar_MEQ):
+    def issueCred(self, attributesRaw, isk, iparDVSC, iparMEQ):
 
         #parse the secret keys and ipar
         sk_MEQ, _, randomScalarR  = isk
-        challenge, response, commitmentBasis = ipar_DVSC
+        challenge, proof, commitmentBasis = iparDVSC
 
         #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
-        commitment = self.Scheme_DVSC.commit(challenge, response, commitmentBasis, attributesRaw)
+        commitment = self.SchemeDVSC.commit(challenge, proof, commitmentBasis, attributesRaw)
 
         #check commitment is valid
         if commitment is None:
@@ -155,28 +155,28 @@ class KVAC_MEQ:
         randomScalarAInverse = randomScalarA ** -1
 
         #compute the tag from the MEQ scheme
-        encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
+        encodedMessages, tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
       
         # Proof time :)
-        response = self.makeNIZK(sk_MEQ, commitment, ipar_MEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse)
+        proof = self.makeNIZK(sk_MEQ, commitment, iparMEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse)
 
-        return tagR, tagT, response, encodedMessages, commitment
+        return tagR, tagT, proof, encodedMessages, commitment
     
     
-    def obtainCred(self, attributesRaw, ipar_DVSC, ipar_MEQ, response, tagR, tagT):
+    def obtainCred(self, attributesRaw, iparDVSC, iparMEQ, proof, tagR, tagT):
 
         #get needed variables
-        responseChallenge, responseSA, responseSX1, reponseSX2, responseSR = response
+        proofChallenge, proofSA, proofSX1, proofSX2, proofSR = proof
 
         #make commitment
-        commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
+        commitment = self.SchemeDVSC.commit(*iparDVSC, attributesRaw)
 
-        #check that ipar_DVSC is valid
+        #check that iparDVSC is valid
         if commitment is None:
             return None
 
         # Proof time :)
-        check = self.verifyNIZK(responseChallenge, responseSA, responseSX1, reponseSX2, responseSR, commitment, attributesRaw, tagR, tagT, ipar_MEQ)
+        check = self.verifyNIZK(proofChallenge, proofSA, proofSX1, proofSX2, proofSR, commitment, attributesRaw, tagR, tagT, iparMEQ)
 
         if check == False:
             return None
@@ -184,37 +184,38 @@ class KVAC_MEQ:
         return tagR, tagT
     
 
-    def showCred(self, tagR, tagT, attributesRaw, subset, encodedMessages, ipar_DVSC):
+    def showCred(self, tagR, tagT, attributesRaw, requiredAttributesSubsetRaw, encodedMessages, iparDVSC):
+        
         #get random scalar
-        randomMu = self.group.random(ZR)
-        while randomMu == self.group.init(ZR):
-            randomMu = self.group.random(ZR)
+        randomScalarMu = self.group.random(ZR)
+        while randomScalarMu == self.group.init(ZR):
+            randomScalarMu = self.group.random(ZR)
 
-        _,_, commitmentBasis = ipar_DVSC
+        _,_, commitmentBasis = iparDVSC
 
         #compute the randomized tag
-        randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, randomMu)
+        randomizedTag = self.SchemeMEQ.changeRepresentation(encodedMessages, tagR, tagT, randomScalarMu)
 
         #make a commitment
-        commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
+        commitment = self.SchemeDVSC.commit(*iparDVSC, attributesRaw)
         #compute randomized commitment
-        ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, randomMu)
+        ranomizedCommitment = self.SchemeDVSC.randomize(*commitment, randomScalarMu)
 
         #compute witness
-        witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, randomMu)
+        witness = self.SchemeDVSC.openSubset(commitmentBasis, attributesRaw, requiredAttributesSubsetRaw, randomScalarMu)
 
         return randomizedTag, ranomizedCommitment, witness
 
 
-    def verify(self, randomizedTag, randomizedCommitment, witness, subset, isk):
+    def verify(self, randomizedTag, randomizedCommitment, witness, requiredAttributesSubsetRaw, isk):
 
         sk_MEQ, sk_DVSC, _ = isk
         changedMessages, tagR, tagT = randomizedTag
 
         #use functions from other two scheme to verify the subset and commtiment
-        verifyMEQ = self.Scheme_MEQ.verify(sk_MEQ, changedMessages, tagR, tagT)
-        verifySubset = self.Scheme_DVSC.verifySubset(
-            sk_DVSC, randomizedCommitment[0], witness, subset
+        verifyMEQ = self.SchemeMEQ.verify(sk_MEQ, changedMessages, tagR, tagT)
+        verifySubset = self.SchemeDVSC.verifySubset(
+            sk_DVSC, randomizedCommitment[0], witness, requiredAttributesSubsetRaw
         )
 
         return verifyMEQ and verifySubset
