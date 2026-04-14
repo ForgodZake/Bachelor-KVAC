@@ -1,7 +1,7 @@
 from charm.toolbox.pairinggroup import ZR, PairingGroup
 from KVAC_GGM_Scheme import KVAC_GGM
 
-def test_kvac():
+def test_KVAC_GGM_verifies_correctly():
     group = PairingGroup('SS512')
     scheme = KVAC_GGM(group)
 

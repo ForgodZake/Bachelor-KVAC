@@ -1,7 +1,7 @@
 from charm.toolbox.pairinggroup import ZR, PairingGroup
 from KVAC_MEQ_Scheme import KVAC_MEQ
 
-def test_hopeItWorks():
+def test_KVAC_MEQ_verifies_correctly():
 
     group = PairingGroup('SS512')
     scheme = KVAC_MEQ(group)
