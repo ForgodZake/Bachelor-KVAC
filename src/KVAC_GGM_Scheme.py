@@ -16,7 +16,7 @@ class KVAC_GGM:
         r = self.group.random(ZR)
 
         #make the secret key
-        secretKey = x, v
+        isk = x, v
 
         #compute the public parameters
         ipar_R = r * generator
@@ -25,7 +25,7 @@ class KVAC_GGM:
 
         ipar = ipar_R, ipar_X, ipar_v
 
-        return secretKey, ipar
+        return isk, ipar
     
     def buildCommitmentBasis(self, secretKey, upperBound, y):
 
@@ -105,6 +105,7 @@ class KVAC_GGM:
         # Otherwise serialize elements from group objects (G1, G2, ZR elements)
         return self.group.serialize(announcementSequence)
     
+
     def buildPIResponse(self, random_x, random_v, challenge, secret_x, secret_v):
         response_x = random_x + challenge * secret_x
         response_v = random_v + challenge * secret_v
@@ -113,75 +114,78 @@ class KVAC_GGM:
 
     
     def issueCred(self, attributesRaw, isk, ipar):
-        #get secret keys
+        #get secret keys and ipar
         secret_x, secret_v = isk
-
         ipar_R, ipar_X, ipar_v = ipar
 
+        #sample random y
         y = self.group.random(ZR)
 
-        # Hash attributes to ZR space
+        # Hash attributes to ZR space and build polynomial
         attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
         coefficents = self.createPolynomial(attributes)
         polynomial = self.evaluatePolynomial(coefficents, secret_v)
         commitment = (y * polynomial * self.G)
 
+        #compute the tag
         tag = secret_x * commitment
 
+        #compute Yj(basis)
         basis = self.buildCommitmentBasis(secret_v, len(attributesRaw), y)
 
         #proof time :)
         random_x = self.group.random(ZR)
         random_v = self.group.random(ZR)
 
+        #compute announceent
         announcement = self.sigmaProtocol(commitment, ipar_R, basis, random_x, random_v)
 
+        #compute hash
         hashSequence = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
-
         challenge = self.hashForChallenge(hashSequence)
 
+        #make the response
         response_x, response_v = self.buildPIResponse(random_x, random_v, challenge, secret_x, secret_v)
-
         pi = (challenge, response_x, response_v)
 
         return tag, basis, pi
     
 
     def obtainCred(self, tag, basis, pi, attributesRaw, ipar):
+
         challenge, response_x, response_v = pi
-        
         ipar_R, ipar_X, ipar_v = ipar
 
         # Hash attributes to ZR space
         attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
 
+        # Compute polynomial
         coefficients = self.createPolynomial(attributes)
         commitment = self.group.init(G1)
-
         for coeff, baseElement in zip(coefficients, basis):
             commitment += coeff * baseElement
 
-
+        #make sure commitment is not the basis element
         if commitment == self.group.init(G1):
                 return None
         
+        # Compute the announcement
         sigmaAnnouncement_C, sigmaAnnouncement_R, sigmaAnnouncement_basis = self.sigmaProtocol(commitment, ipar_R, basis, response_x, response_v)
-
         announcement_tag = sigmaAnnouncement_C - (challenge * tag)
         announcement_X = sigmaAnnouncement_R - (challenge * ipar_X)
-        announcement_basis = []
 
+        announcement_basis = []
         for i in range(len(basis)-1):
             announcement_basis.append(sigmaAnnouncement_basis[i] - (challenge * basis[i+1]))
 
         announcement = (announcement_tag, announcement_X, announcement_basis)
 
+        #compute the challenge
         userChallenge = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
-
         userChallengeHash = self.hashForChallenge(userChallenge)
 
+        #check that the challenge computed on user and issuer side are the same
         if challenge != userChallengeHash:
-        
             return None
         
         return tag, basis
@@ -216,13 +220,19 @@ class KVAC_GGM:
 
     def showCred(self, tag, basis, attributesRaw, subset):
 
+        #get random mu and make sure it is not 0
         randomMu = self.group.random(ZR)
         while randomMu == self.group.init(ZR):
             randomMu = self.group.random(ZR)
 
-        if subset
+        #check that subset is actually a subset for the attribute set
+        if not all(d in attributesRaw for d in subset):
+            return None
+        
+        #make the witness
         witness = self.openSubset(basis, attributesRaw, subset, randomMu)
 
+        #randomize the tag
         randomizedTag = randomMu * tag
 
         return randomizedTag, witness
@@ -230,19 +240,20 @@ class KVAC_GGM:
 
     def verify(self, randomizedTag, witness, subset, isk):
 
-
+        #Make sure that tag is not base element
         if randomizedTag == self.group.init(G1):
             return False
-        x, v = isk
+        
+        #get keys
+        secret_x, secret_v = isk
 
-        # Hash attributes to ZR space
+        # Hash attributes to ZR space and compute polynomail
         attributes = [self.group.hash(attribute, ZR) for attribute in subset]
-
         coefficients = self.createPolynomial(attributes)
-        polynomial = self.evaluatePolynomial(coefficients, v)
+        polynomial = self.evaluatePolynomial(coefficients, secret_v)
 
-        check = x * witness * polynomial
-
+        #make sure that its equal to the tag
+        check = secret_x * witness * polynomial
         if check == randomizedTag:
             return True
         
