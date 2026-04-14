@@ -67,6 +67,59 @@ class KVAC_MEQ:
         #compute x1 * C1 + x2 * C2
         t2 = (x1 * c1) + (x2 * c2) - (randomScalar * tagR)
         return x, t1, t2
+    
+
+    def makeNIZK(self, sk_MEQ, commitment, ipar_MEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse):
+
+        #sample to get the needed variables
+        randomAInverseProof = self.group.random(ZR)
+        randomX1 = self.group.random(ZR)
+        randomX2= self.group.random(ZR)
+        randomR = self.group.random(ZR)
+
+        #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
+        randomParameters = (randomAInverseProof, randomX1, randomX2, randomR, commitment, tagR)
+
+        #Compute the sigma protocol
+        randomAnnouncement  = self.sigmaProtocol(*randomParameters)
+
+        #Build sequence needed for the challenge (S, X, C, R, T, A)
+        announcementSequence = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, randomAnnouncement)
+
+        #Hash the sequence to get the challenge
+        challenge = self.hashForChallenge(announcementSequence)
+
+        #Make the two sequences that are needed to make the full Pi proof
+        responseSequence = (randomScalarR, challenge, randomScalarAInverse, *sk_MEQ)
+        randomResponseSequence = (randomAInverseProof, randomX1, randomX2, randomR)
+        
+        #Build the final PI response
+        response = self.buildPIResponse(responseSequence, randomResponseSequence)
+
+        return response
+
+        
+    def verifyNIZK(self, responseChallenge, responseSA, responseSX1, reponseSX2, responseSR, commitment, attributesRaw, tagR, tagT, ipar_MEQ):
+
+        #Compute the first part for verifying the PI proof
+        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(responseSA, responseSX1, reponseSX2, responseSR, commitment, tagR)
+    
+        # unique accepting Sigma protocol announcement (UASPA)
+        ipar_MEQ_UASPA = sigmaX - responseChallenge * ipar_MEQ
+        tagT_UASPA = sigmaT1 - responseChallenge * tagT
+        zero_UASPA = sigmaT2
+
+        #make the sequence that is needed for the new challenge
+        verifyChallengeAnnouncementSeq = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, (ipar_MEQ_UASPA, tagT_UASPA, zero_UASPA))
+
+        #hash the sequence
+        newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
+
+        #check that the new challenge is the same as the challenge computed on the issuer side
+        if responseChallenge != newChallenge:
+            return False
+
+        return True
 
     def keyGen(self, attributeListSize):
         #make the secret key from MEQ scheme upperbound of 2
@@ -87,7 +140,7 @@ class KVAC_MEQ:
     def issueCred(self, attributesRaw, isk, ipar_DVSC, ipar_MEQ):
 
         #parse the secret keys and ipar
-        sk_MEQ, _, randomSaclarR  = isk
+        sk_MEQ, _, randomScalarR  = isk
         challenge, response, commitmentBasis = ipar_DVSC
 
         #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
@@ -105,30 +158,7 @@ class KVAC_MEQ:
         encodedMessages, tagR, tagT = self.Scheme_MEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
       
         # Proof time :)
-        #sample to get the needed variables
-        randomAInverseProof = self.group.random(ZR)
-        randomX1 = self.group.random(ZR)
-        randomX2= self.group.random(ZR)
-        randomR = self.group.random(ZR)
-
-        #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
-        randomParameters = (randomAInverseProof, randomX1, randomX2, randomR, commitment, tagR)
-
-        #Compute the sigma protocol
-        randomAnnouncement  = self.sigmaProtocol(*randomParameters)
-
-        #Build sequence needed for the challenge (S, X, C, R, T, A)
-        announcementSequence = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, randomAnnouncement)
-
-        #Hash the sequence to get the challenge
-        challenge = self.hashForChallenge(announcementSequence)
-
-        #Make the two sequences that are needed to make the full Pi proof
-        responseSequence = (randomSaclarR, challenge, randomScalarAInverse, *sk_MEQ)
-        randomResponseSequence = (randomAInverseProof, randomX1, randomX2, randomR)
-
-        #Build the final PI response
-        response = self.buildPIResponse(responseSequence, randomResponseSequence)
+        response = self.makeNIZK(sk_MEQ, commitment, ipar_MEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse)
 
         return tagR, tagT, response, encodedMessages, commitment
     
@@ -145,22 +175,11 @@ class KVAC_MEQ:
         if commitment is None:
             return None
 
-        #Compute the first part for verifying the PI proof
-        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(responseSA, responseSX1, reponseSX2, responseSR, commitment, tagR)
-    
-        # unique accepting Sigma protocol announcement (UASPA)
-        ipar_MEQ_UASPA = sigmaX - responseChallenge * ipar_MEQ
-        tagT_UASPA = sigmaT1 - responseChallenge * tagT
-        zero_UASPA = sigmaT2
+        
+        # Proof time :)
+        check = self.verifyNIZK(responseChallenge, responseSA, responseSX1, reponseSX2, responseSR, commitment, attributesRaw, tagR, tagT, ipar_MEQ)
 
-        #make the sequence that is needed for the new challenge
-        verifyChallengeAnnouncementSeq = (attributesRaw, ipar_MEQ, *commitment, tagR, tagT, (ipar_MEQ_UASPA, tagT_UASPA, zero_UASPA))
-
-        #hash the sequence
-        newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
-
-        #check that the new challenge is the same as the challenge computed on the issuer side
-        if responseChallenge != newChallenge:
+        if check == False:
             return None
         
         return tagR, tagT

@@ -112,7 +112,50 @@ class KVAC_GGM:
 
         return response_x, response_v
 
-    
+    def makeNIZK(self, secret_x, secret_v, commitment, ipar, basis, tag, attributesRaw):
+
+        ipar_R, ipar_X, ipar_v = ipar 
+
+        random_x = self.group.random(ZR)
+        random_v = self.group.random(ZR)
+
+        #compute announceent
+        announcement = self.sigmaProtocol(commitment, ipar_R, basis, random_x, random_v)
+
+        #compute hash
+        hashSequence = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
+        challenge = self.hashForChallenge(hashSequence)
+
+        #make the response
+        response_x, response_v = self.buildPIResponse(random_x, random_v, challenge, secret_x, secret_v)
+        return (challenge, response_x, response_v)
+
+        
+    def verifyNIZK(self, pi, commitment, ipar, basis, tag, attributesRaw):
+
+        challenge, response_x, response_v = pi
+        ipar_R, ipar_X, ipar_v = ipar
+
+        # Compute the announcement
+        sigmaAnnouncement_C, sigmaAnnouncement_R, sigmaAnnouncement_basis = self.sigmaProtocol(commitment, ipar_R, basis, response_x, response_v)
+        announcement_tag = sigmaAnnouncement_C - (challenge * tag)
+        announcement_X = sigmaAnnouncement_R - (challenge * ipar_X)
+
+        announcement_basis = []
+        for i in range(len(basis)-1):
+            announcement_basis.append(sigmaAnnouncement_basis[i] - (challenge * basis[i+1]))
+
+        announcement = (announcement_tag, announcement_X, announcement_basis)
+
+        #compute the challenge
+        userChallenge = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
+        userChallengeHash = self.hashForChallenge(userChallenge)
+
+        if challenge != userChallengeHash:
+            return False
+
+        return True
+
     def issueCred(self, attributesRaw, isk, ipar):
         #get secret keys and ipar
         secret_x, secret_v = isk
@@ -134,27 +177,12 @@ class KVAC_GGM:
         basis = self.buildCommitmentBasis(secret_v, len(attributesRaw), y)
 
         #proof time :)
-        random_x = self.group.random(ZR)
-        random_v = self.group.random(ZR)
-
-        #compute announceent
-        announcement = self.sigmaProtocol(commitment, ipar_R, basis, random_x, random_v)
-
-        #compute hash
-        hashSequence = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
-        challenge = self.hashForChallenge(hashSequence)
-
-        #make the response
-        response_x, response_v = self.buildPIResponse(random_x, random_v, challenge, secret_x, secret_v)
-        pi = (challenge, response_x, response_v)
+        pi = self.makeNIZK(secret_x, secret_v, commitment, ipar, basis, tag, attributesRaw)
 
         return tag, basis, pi
     
 
     def obtainCred(self, tag, basis, pi, attributesRaw, ipar):
-
-        challenge, response_x, response_v = pi
-        ipar_R, ipar_X, ipar_v = ipar
 
         # Hash attributes to ZR space
         attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
@@ -169,23 +197,11 @@ class KVAC_GGM:
         if commitment == self.group.init(G1):
                 return None
         
-        # Compute the announcement
-        sigmaAnnouncement_C, sigmaAnnouncement_R, sigmaAnnouncement_basis = self.sigmaProtocol(commitment, ipar_R, basis, response_x, response_v)
-        announcement_tag = sigmaAnnouncement_C - (challenge * tag)
-        announcement_X = sigmaAnnouncement_R - (challenge * ipar_X)
-
-        announcement_basis = []
-        for i in range(len(basis)-1):
-            announcement_basis.append(sigmaAnnouncement_basis[i] - (challenge * basis[i+1]))
-
-        announcement = (announcement_tag, announcement_X, announcement_basis)
-
-        #compute the challenge
-        userChallenge = (attributesRaw, tag, ipar_v, commitment, ipar_X, ipar_R, basis, announcement)
-        userChallengeHash = self.hashForChallenge(userChallenge)
-
+        # verify zero knowledge and get check
+        check = self.verifyNIZK(pi, commitment, ipar, basis, tag, attributesRaw)
+       
         #check that the challenge computed on user and issuer side are the same
-        if challenge != userChallengeHash:
+        if check == False:
             return None
         
         return tag, basis
