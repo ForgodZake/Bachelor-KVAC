@@ -168,20 +168,22 @@ class KVAC_MEQ:
 
     def showCred(self, tagR, tagT, attributesRaw, subset, encodedMessages, ipar_DVSC):
         #get random scalar
-        mu = self.group.random(ZR)
+        randomMu = self.group.random(ZR)
+        while randomMu == self.group.init(ZR):
+            randomMu = self.group.random(ZR)
 
         _,_, commitmentBasis = ipar_DVSC
 
         #compute the randomized tag
-        randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, mu)
+        randomizedTag = self.Scheme_MEQ.changeRepresentation(encodedMessages, tagR, tagT, randomMu)
 
         #make a commitment
         commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
         #compute randomized commitment
-        ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, mu)
+        ranomizedCommitment = self.Scheme_DVSC.randomize(*commitment, randomMu)
 
         #compute witness
-        witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, mu)
+        witness = self.Scheme_DVSC.openSubset(commitmentBasis, attributesRaw, subset, randomMu)
 
         return randomizedTag, ranomizedCommitment, witness
 

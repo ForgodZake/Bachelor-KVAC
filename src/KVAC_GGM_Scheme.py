@@ -213,16 +213,24 @@ class KVAC_GGM:
 
         return commitment
     
+
     def showCred(self, tag, basis, attributesRaw, subset):
 
         randomMu = self.group.random(ZR)
+        while randomMu == self.group.init(ZR):
+            randomMu = self.group.random(ZR)
+
+        if subset
         witness = self.openSubset(basis, attributesRaw, subset, randomMu)
 
         randomizedTag = randomMu * tag
 
         return randomizedTag, witness
     
+
     def verify(self, randomizedTag, witness, subset, isk):
+
+
         if randomizedTag == self.group.init(G1):
             return False
         x, v = isk
@@ -239,12 +247,3 @@ class KVAC_GGM:
             return True
         
         return False
-
-        
-
-
-
-
-
-
-        
