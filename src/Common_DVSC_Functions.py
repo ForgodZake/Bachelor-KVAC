@@ -1,6 +1,6 @@
 from charm.toolbox.pairinggroup import G1, ZR
 
-class PolyCommitBase:
+class Common_DVSC_Functions:
 
     def __init__(self, groupObject, generator):
         
@@ -65,3 +65,28 @@ class PolyCommitBase:
             commitment += coefficients[i] * commitmentBasis[i]
 
         return commitment
+    
+    def hashForChallenge(self, announcementSequence):
+
+        # convert announcement to byterepresentation for hashing
+        byteRepresentation = self.toBytes(announcementSequence)
+
+        return self.group.hash(byteRepresentation, ZR)
+    
+    def toBytes(self, announcementSequence):
+
+        # If announcementSequence is string encode 
+        if isinstance(announcementSequence, str):
+            return announcementSequence.encode("utf-8")
+
+        # If announcementSequence is list or tuble recursively access each element,
+        # and concatenate encoding/serialization to result.
+        if isinstance(announcementSequence, (list, tuple)):
+            result = b""
+            for item in announcementSequence:
+                result += self.toBytes(item) + b"||"
+            return result
+
+        # Otherwise serialize elements from group objects (G1, G2, ZR elements)
+        return self.group.serialize(announcementSequence)
+    

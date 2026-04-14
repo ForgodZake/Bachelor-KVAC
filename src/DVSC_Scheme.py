@@ -1,7 +1,7 @@
-from charm.toolbox.pairinggroup import G1, ZR
-from PolyCommmitBase import PolyCommitBase
+from charm.toolbox.pairinggroup import ZR
+from Common_DVSC_Functions import Common_DVSC_Functions
 
-class DVSC(PolyCommitBase):
+class DVSC(Common_DVSC_Functions):
 
     def __init__(self, groupObject, g1Element, gPrimeElement):
         
@@ -18,17 +18,6 @@ class DVSC(PolyCommitBase):
             commitmentBasis.append(basisElement)
         #return commitment basis
         return commitmentBasis
-
-    def hashForChallenge(self, announcementSequence, commitmentBasis):
-
-        # creates a combined hash of announementSequence and commitmentBasis,
-        # using a serialized byte representasion
-        byteRepresentation = b""
-        for announcementElement in announcementSequence:
-            byteRepresentation += self.group.serialize(announcementElement)
-        for basisElement in commitmentBasis:
-            byteRepresentation += self.group.serialize(basisElement)
-        return self.group.hash(byteRepresentation, ZR)
 
     def sigmaProtocol(self, randomScalar, commitmentBasis):
         
@@ -47,7 +36,7 @@ class DVSC(PolyCommitBase):
 
         randomScalar = self.group.random(ZR)
         announcement = self.sigmaProtocol(randomScalar, commitmentBasis[:-1])
-        challenge = self.hashForChallenge(announcement, commitmentBasis)
+        challenge = self.hashForChallenge((announcement, commitmentBasis))
         response = randomScalar + challenge * secretKey
 
         return secretKey, challenge, response, commitmentBasis
@@ -67,7 +56,7 @@ class DVSC(PolyCommitBase):
         for i in range(len(commitmentBasis) - 1):
             proposedChallenge.append(sigmaOutPut[i] - (challenge * commitmentBasis[i + 1]))
 
-        challengeCheck = self.hashForChallenge(proposedChallenge, commitmentBasis)
+        challengeCheck = self.hashForChallenge((proposedChallenge, commitmentBasis))
 
         # Checks if proposed challenge is valid
         if challengeCheck != challenge:
@@ -84,6 +73,7 @@ class DVSC(PolyCommitBase):
         newCommitment2 = commitment2 * randomScalarMu
 
         return newCommitment1, newCommitment2
+
 
     def verifySubset(self, secretKey, randomizedCommitment, witness, requiredAttributeSubsetRaw):
 

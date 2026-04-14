@@ -1,7 +1,7 @@
 from charm.toolbox.pairinggroup import G1, ZR
-from PolyCommmitBase import PolyCommitBase
+from Common_DVSC_Functions import Common_DVSC_Functions
 
-class KVAC_GGM(PolyCommitBase):
+class KVAC_GGM(Common_DVSC_Functions):
 
     def __init__(self, groupObject):
 
@@ -49,31 +49,6 @@ class KVAC_GGM(PolyCommitBase):
             sigma_basis.append(basisElement)
 
         return sigma_C, sigma_R, sigma_basis        
-    
-    def hashForChallenge(self, announcementSequence):
-
-        # convert announcement to byterepresentation for hashing
-        byteRepresentation = self.toBytes(announcementSequence)
-
-        return self.group.hash(byteRepresentation, ZR)
-    
-    def toBytes(self, announcementSequence):
-
-        # If announcementSequence is string encode 
-        if isinstance(announcementSequence, str):
-            return announcementSequence.encode("utf-8")
-
-        # If announcementSequence is list or tuble recursively access each element,
-        # and concatenate encoding/serialization to result.
-        if isinstance(announcementSequence, (list, tuple)):
-            result = b""
-            for item in announcementSequence:
-                result += self.toBytes(item) + b"||"
-            return result
-
-        # Otherwise serialize elements from group objects (G1, G2, ZR elements)
-        return self.group.serialize(announcementSequence)
-    
 
     def buildPIResponse(self, random_x, random_v, challenge, secret_x, secret_v):
         response_x = random_x + challenge * secret_x
