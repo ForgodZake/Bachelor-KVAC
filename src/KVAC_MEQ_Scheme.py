@@ -171,11 +171,10 @@ class KVAC_MEQ:
         #make commitment
         commitment = self.Scheme_DVSC.commit(*ipar_DVSC, attributesRaw)
 
-        #check that ipar_dvsc is valid
+        #check that ipar_DVSC is valid
         if commitment is None:
             return None
 
-        
         # Proof time :)
         check = self.verifyNIZK(responseChallenge, responseSA, responseSX1, reponseSX2, responseSR, commitment, attributesRaw, tagR, tagT, ipar_MEQ)
 
