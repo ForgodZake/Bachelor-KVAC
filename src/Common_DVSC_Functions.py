@@ -20,29 +20,36 @@ class Common_DVSC_Functions:
         else:
             self.g1 = generator
 
+
     def groupIdentity(self):
         return self.group.init(self.groupElementType)
     
+
     def scalarZero(self):
         return self.group.init(self.scalarType)
+
 
     def scalarOne(self):
         return self.group.init(self.scalarType, 1) 
     
+
     def groupMult(self, element, scalar):
         if self.groupSetting == "elliptic_curve":
             return element ** scalar
         return element * scalar
     
+
     def groupAdd(self, element, scalar):
         if self.groupSetting == "elliptic_curve":
             return element * scalar
         return element + scalar
     
+
     def groupSub(self, element, scalar):
         if self.groupSetting == "elliptic_curve":
             return element / scalar
         return element - scalar
+
 
     def createPolynomial(self, disclosedAttributes):
         
@@ -64,6 +71,7 @@ class Common_DVSC_Functions:
 
         return coefficients
     
+
     def evaluatePolynomial(self, coefficients, secretKey):
         result = self.scalarZero()
         power = self.scalarOne()
@@ -75,9 +83,11 @@ class Common_DVSC_Functions:
 
         return result
     
+
     def evaluatePolynomialForVerification(self, attributesRaw, secretKey):
         result = self.scalarOne()
 
+        # evaluate f_S(v) wihtout computing polynomial as we have access to secretKey
         for attribute in attributesRaw:
             hashedAttributes = self.group.hash(attribute, self.scalarType)
             result *= (secretKey - hashedAttributes)
@@ -102,6 +112,7 @@ class Common_DVSC_Functions:
 
         return witness
     
+
     def createCommitment(self, coefficients, commitmentBasis):
 
         commitment = self.groupIdentity()
@@ -112,6 +123,7 @@ class Common_DVSC_Functions:
 
         return commitment
     
+
     def hashForChallenge(self, announcementSequence):
 
         # convert announcement to byterepresentation for hashing
@@ -119,6 +131,7 @@ class Common_DVSC_Functions:
 
         return self.group.hash(byteRepresentation, self.scalarType)
     
+
     def toBytes(self, announcementSequence):
 
         # If announcementSequence is string encode 

@@ -1,6 +1,7 @@
 from charm.toolbox.pairinggroup import ZR, G1, PairingGroup
 from DVSC_Scheme import DVSC
 
+
 def test_two_differently_randomized_commitments_both_verifies():
 
     group = PairingGroup('SS512')
@@ -8,7 +9,6 @@ def test_two_differently_randomized_commitments_both_verifies():
     gPrime = group.random(G1)
     scheme = DVSC(group, g1, gPrime)
     
-
     attributeList = ["age", "nationality", "occupation"]
 
     secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))

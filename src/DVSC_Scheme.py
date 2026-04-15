@@ -8,6 +8,7 @@ class DVSC(Common_DVSC_Functions):
         super().__init__(groupObject, g1Element)
         self.gPrime = gPrimeElement
 
+
     def buildCommitmentBasis(self, secretKey, upperBound):
 
         basisElement = self.g1
@@ -19,6 +20,7 @@ class DVSC(Common_DVSC_Functions):
         #return commitment basis
         return commitmentBasis
 
+
     def sigmaProtocol(self, randomScalar, commitmentBasis):
         
         # creates the sigma sequence by upscaling each element from the prior by the random scalar
@@ -28,6 +30,7 @@ class DVSC(Common_DVSC_Functions):
             sigmaSequence.append(sigmaI)
 
         return sigmaSequence
+
 
     def keyGen(self, upperBound):
 
@@ -41,6 +44,7 @@ class DVSC(Common_DVSC_Functions):
 
         return secretKey, challenge, response, commitmentBasis
     
+
     def verifyIssuerParameter(self, challenge, response, commitmentBasis):
         proposedChallenge = []
         sigmaOutPut = self.sigmaProtocol(response, commitmentBasis[:-1])
@@ -64,6 +68,7 @@ class DVSC(Common_DVSC_Functions):
         # Create and return commitment
         commitment = self.createCommitment(coefficients, commitmentBasis)   
         return commitment, self.gPrime
+
 
     def randomize(self, commitment1, commitment2, randomScalarMu):
 

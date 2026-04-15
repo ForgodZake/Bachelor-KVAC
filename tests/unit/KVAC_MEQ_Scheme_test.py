@@ -1,5 +1,6 @@
-from charm.toolbox.pairinggroup import ZR, PairingGroup
+from charm.toolbox.pairinggroup import PairingGroup
 from KVAC_MEQ_Scheme import KVAC_MEQ
+
 
 def test_KVAC_MEQ_verifies_correctly():
 

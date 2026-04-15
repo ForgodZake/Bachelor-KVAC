@@ -1,5 +1,6 @@
 from charm.toolbox.pairinggroup import G1, ZR, pair
 
+
 class SP_MAC_EQ:
 
     def __init__(self, groupObject, g1Element, g2Element):
@@ -7,7 +8,8 @@ class SP_MAC_EQ:
         self.group = groupObject
         self.g1 = g1Element
         self.g2 = g2Element
-        
+
+
     def keyGen(self, length):
 
         # Create secret key from random uniformly distributed elements from modular subspace
@@ -16,7 +18,6 @@ class SP_MAC_EQ:
         return secretKey
 
     def createMac(self, secretKey, encodedMessages, randomScalarA):
-
         
         # Compute the wheighted sum (sum_i x_i * M_i)
         wheightedSum = self.computeWeightedSum(secretKey, encodedMessages)
@@ -28,7 +29,8 @@ class SP_MAC_EQ:
         tagR = wheightedSum * randomScalarA
         tagT = self.g2 * randomScalarAInverse
 
-        return encodedMessages, tagR, tagT
+        return tagR, tagT
+
 
     def verify(self, secretKey, encodedMessages, tagR, tagT):
 
@@ -47,6 +49,7 @@ class SP_MAC_EQ:
     
         return verify
 
+
     def changeRepresentation(self, encodedMessages, tagR, tagT, randomScalarMu):
 
         randomScalar = self.group.random(ZR)
@@ -60,6 +63,7 @@ class SP_MAC_EQ:
 
         # return new representation
         return changedMessages, newTagR, newTagT
+
 
     def computeWeightedSum(self, secretKey, encodedMessages):
 

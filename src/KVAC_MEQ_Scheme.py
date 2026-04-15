@@ -17,6 +17,7 @@ class KVAC_MEQ:
         self.SchemeDVSC = DVSC(self.group, self.g1, self.gPrime)
         self.SchemeMEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
 
+
     def buildPIResponse(self, responseSequence, randomResponseSequence):
 
         #get needed variables
@@ -38,6 +39,7 @@ class KVAC_MEQ:
         byteRepresentation = self.toBytes(announcementSequence)
 
         return self.group.hash(byteRepresentation, ZR)
+
 
     def toBytes(self, announcementSequence):
 
@@ -115,10 +117,8 @@ class KVAC_MEQ:
         newChallenge = self.hashForChallenge(verifyChallengeAnnouncementSeq)
 
         #check that the new challenge is the same as the challenge computed on the issuer side
-        if proofChallenge != newChallenge:
-            return False
+        return proofChallenge == newChallenge
 
-        return True
 
     def keyGen(self, attributeListSize):
         #make the secret key from MEQ scheme upperbound of 2
@@ -136,6 +136,7 @@ class KVAC_MEQ:
         ipar = (iparMEQ, iparDVSC)
         return isk, ipar
     
+
     def issueCred(self, attributesRaw, isk, commitmentBasis, iparMEQ):
 
         #parse the secret keys and ipar
@@ -153,12 +154,12 @@ class KVAC_MEQ:
         randomScalarAInverse = randomScalarA ** -1
 
         #compute the tag from the MEQ scheme
-        encodedMessages, tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
+        tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
       
         # Proof time :)
         proof = self.makeNIZK(sk_MEQ, commitment, iparMEQ, tagR, tagT, attributesRaw, randomScalarR, randomScalarAInverse)
 
-        return tagR, tagT, proof, encodedMessages, commitment
+        return tagR, tagT, proof, list(commitment), commitment
     
     
     def obtainCred(self, attributesRaw, iparDVSC, iparMEQ, proof, tagR, tagT, checkIssuerParamater=False):

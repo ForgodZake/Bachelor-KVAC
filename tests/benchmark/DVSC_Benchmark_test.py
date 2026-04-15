@@ -3,9 +3,11 @@ from DVSC_Scheme import DVSC
 import time
 import pytest
 
+
 @pytest.fixture
 def group():
     return PairingGroup('SS512')
+
 
 def sizeBytes(value, group):
     if isinstance(value, str):
@@ -79,6 +81,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     print("randomize time (ms):", times[2] * 1000)
     print("openSubset (ms):", times[3] * 1000)
     print("verifySubset time (ms):", times[4] * 1000)
+
 
 def test_DVSC_benchmarks(group):
 

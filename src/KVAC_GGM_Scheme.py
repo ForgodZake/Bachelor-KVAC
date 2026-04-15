@@ -27,6 +27,7 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         return isk, ipar
     
+
     def buildCommitmentBasis(self, secretKey, upperBound, y):
 
         basisElement = self.g1 ** y
@@ -40,6 +41,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         #return commitment basis
         return commitmentBasis
     
+
     def sigmaProtocol(self, commitment, iparR, basis, x, v):
         sigma_C = commitment ** x
         sigma_R = iparR ** x
@@ -53,11 +55,13 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         return sigma_C, sigma_R, sigma_basis        
 
+
     def buildPIResponse(self, random_x, random_v, challenge, secret_x, secret_v):
         response_x = random_x + challenge * secret_x
         response_v = random_v + challenge * secret_v
 
         return response_x, response_v
+
 
     def makeNIZK(self, secret_x, secret_v, commitment, ipar, basis, tagTau, attributesRaw):
 
@@ -98,10 +102,8 @@ class KVAC_GGM(Common_DVSC_Functions):
         userChallenge = (attributesRaw, tagTau, ipar_v, commitment, iparX, iparR, basis, announcement)
         userChallengeHash = self.hashForChallenge(userChallenge)
 
-        if challenge != userChallengeHash:
-            return False
+        return challenge == userChallengeHash
 
-        return True
 
     def issueCred(self, attributesRaw, isk, ipar):
 
