@@ -33,17 +33,21 @@ class KVAC_GGM(Common_DVSC_Functions):
         commitmentBasis = [basisElement]
 
         for i in range(upperBound):
-            basisElement = basisElement ** secretKey
 
+            basisElement = basisElement ** secretKey
             commitmentBasis.append(basisElement)
+
         #return commitment basis
         return commitmentBasis
     
     def sigmaProtocol(self, commitment, iparR, basis, x, v):
         sigma_C = commitment ** x
         sigma_R = iparR ** x
+
         sigma_basis = []
+
         for i in range(len(basis)-1):
+
             basisElement = basis[i] ** v
             sigma_basis.append(basisElement)
 
@@ -106,9 +110,9 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         #sample random y
         y = self.group.random(self.scalarType)
-
         
         polynomial = self.evaluatePolynomialForVerification(attributesRaw, secret_v)
+
         commitment = (self.g1 ** (y * polynomial))
 
         #compute the tag tau
@@ -131,6 +135,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         # Compute polynomial
         coefficients = self.createPolynomial(attributes)
         commitment = self.groupIdentity()
+        
         for coeff, baseElement in zip(coefficients, basis):
             commitment = commitment * (baseElement ** coeff)
 

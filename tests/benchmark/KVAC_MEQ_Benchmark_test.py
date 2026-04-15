@@ -52,7 +52,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     
     start = time.perf_counter()
     tagR, tagT, response, encodedMessages, _ = scheme.issueCred(
-        attributeList, isk, ipar_DVSC, ipar_MEQ
+        attributeList, isk, commitmentBasis, ipar_MEQ
     )
     end = time.perf_counter()
     times.append(end - start)

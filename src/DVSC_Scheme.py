@@ -58,7 +58,6 @@ class DVSC(Common_DVSC_Functions):
 
         # Hash attributes to ZR space
         disclosedAttributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
-
         # Get polynomial coefficients
         coefficients = self.createPolynomial(disclosedAttributes)
         

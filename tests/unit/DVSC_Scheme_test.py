@@ -11,9 +11,9 @@ def test_two_differently_randomized_commitments_both_verifies():
 
     attributeList = ["age", "nationality", "occupation"]
 
-    secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))
+    secretKey, _, _, commitmentBasis = scheme.keyGen(len(attributeList))
 
-    commitment = scheme.commit(challenge, response, commitmentBasis, attributeList)
+    commitment = scheme.commit(commitmentBasis, attributeList)
     
     randomScalarMu = group.random(ZR)
     differentRandomScalarMu = group.random(ZR)

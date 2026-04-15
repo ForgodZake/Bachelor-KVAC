@@ -136,11 +136,10 @@ class KVAC_MEQ:
         ipar = (iparMEQ, iparDVSC)
         return isk, ipar
     
-    def issueCred(self, attributesRaw, isk, iparDVSC, iparMEQ):
+    def issueCred(self, attributesRaw, isk, commitmentBasis, iparMEQ):
 
         #parse the secret keys and ipar
         sk_MEQ, _, randomScalarR  = isk
-        _, _, commitmentBasis = iparDVSC
 
         #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
         commitment = self.SchemeDVSC.commit(commitmentBasis, attributesRaw)

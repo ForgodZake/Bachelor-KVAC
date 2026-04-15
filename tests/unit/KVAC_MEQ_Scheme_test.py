@@ -11,8 +11,9 @@ def test_KVAC_MEQ_verifies_correctly():
 
     isk, ipar = scheme.keyGen(len(attributeList))
     ipar_MEQ, ipar_DVSC = ipar
+    _, _, commitmentBasis = ipar_DVSC
 
-    tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(attributeList, isk, ipar_DVSC, ipar_MEQ)
+    tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(attributeList, isk, commitmentBasis, ipar_MEQ)
 
     assert commitment is not None
 
