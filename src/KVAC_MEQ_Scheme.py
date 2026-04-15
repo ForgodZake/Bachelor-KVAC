@@ -48,10 +48,10 @@ class KVAC_MEQ:
         # If announcementSequence is list or tuble recursively access each element,
         # and concatenate encoding/serialization to result.
         if isinstance(announcementSequence, (list, tuple)):
-            result = b""
+            parts = []
             for item in announcementSequence:
-                result += self.toBytes(item) + b"||"
-            return result
+                parts.append(self.toBytes(item))
+            return b"||".join(parts)
 
         # Otherwise serialize elements from group objects (G1, G2, ZR elements)
         return self.group.serialize(announcementSequence)
@@ -85,7 +85,6 @@ class KVAC_MEQ:
 
         #Build sequence needed for the challenge (S, X, C, R, T, A)
         announcementSequence = (attributesRaw, iparMEQ, *commitment, tagR, tagT, randomAnnouncement)
-
         #Hash the sequence to get the challenge
         challenge = self.hashForChallenge(announcementSequence)
 
@@ -141,10 +140,10 @@ class KVAC_MEQ:
 
         #parse the secret keys and ipar
         sk_MEQ, _, randomScalarR  = isk
-        challenge, proof, commitmentBasis = iparDVSC
+        _, _, commitmentBasis = iparDVSC
 
         #compute the commitment from the DVSC scheme and serialize it so createMac can iterate over
-        commitment = self.SchemeDVSC.commit(challenge, proof, commitmentBasis, attributesRaw)
+        commitment = self.SchemeDVSC.commit(commitmentBasis, attributesRaw)
 
         #check commitment is valid
         if commitment is None:
@@ -163,13 +162,18 @@ class KVAC_MEQ:
         return tagR, tagT, proof, encodedMessages, commitment
     
     
-    def obtainCred(self, attributesRaw, iparDVSC, iparMEQ, proof, tagR, tagT):
+    def obtainCred(self, attributesRaw, iparDVSC, iparMEQ, proof, tagR, tagT, checkIssuerParamater=False):
 
         #get needed variables
         proofChallenge, proofSA, proofSX1, proofSX2, proofSR = proof
+        challenge, response, commitmentBasis = iparDVSC
+
+        if checkIssuerParamater:
+            if not self.SchemeDVSC.verifyIssuerParameter(challenge, response, commitmentBasis):
+                return None
 
         #make commitment
-        commitment = self.SchemeDVSC.commit(*iparDVSC, attributesRaw)
+        commitment = self.SchemeDVSC.commit(commitmentBasis, attributesRaw)
 
         #check that iparDVSC is valid
         if commitment is None:
@@ -197,7 +201,7 @@ class KVAC_MEQ:
         randomizedTag = self.SchemeMEQ.changeRepresentation(encodedMessages, tagR, tagT, randomScalarMu)
 
         #make a commitment
-        commitment = self.SchemeDVSC.commit(*iparDVSC, attributesRaw)
+        commitment = self.SchemeDVSC.commit(commitmentBasis, attributesRaw)
         #compute randomized commitment
         ranomizedCommitment = self.SchemeDVSC.randomize(*commitment, randomScalarMu)
 

@@ -40,15 +40,8 @@ class DVSC(Common_DVSC_Functions):
         response = randomScalar + challenge * secretKey
 
         return secretKey, challenge, response, commitmentBasis
-
-    def commit(self, challenge, response, commitmentBasis, attributesRaw):
-
-        # Hash attributes to ZR space
-        disclosedAttributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
-
-        # Get polynomial coefficients
-        coefficients = self.createPolynomial(disclosedAttributes)
-
+    
+    def verifyIssuerParameter(self, challenge, response, commitmentBasis):
         proposedChallenge = []
         sigmaOutPut = self.sigmaProtocol(response, commitmentBasis[:-1])
 
@@ -58,13 +51,19 @@ class DVSC(Common_DVSC_Functions):
 
         challengeCheck = self.hashForChallenge((proposedChallenge, commitmentBasis))
 
-        # Checks if proposed challenge is valid
-        if challengeCheck != challenge:
-            return None
+        return challengeCheck == challenge
+        
+
+    def commit(self, commitmentBasis, attributesRaw):
+
+        # Hash attributes to ZR space
+        disclosedAttributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
+
+        # Get polynomial coefficients
+        coefficients = self.createPolynomial(disclosedAttributes)
         
         # Create and return commitment
         commitment = self.createCommitment(coefficients, commitmentBasis)   
-
         return commitment, self.gPrime
 
     def randomize(self, commitment1, commitment2, randomScalarMu):
@@ -83,4 +82,4 @@ class DVSC(Common_DVSC_Functions):
         commitment = polynomialAtSecret * witness
 
         # Check that the reconstructed commitment value matches the randomized commitment
-        return True if randomizedCommitment == commitment else False
+        return randomizedCommitment == commitment

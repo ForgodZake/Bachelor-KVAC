@@ -1,20 +1,19 @@
-from charm.toolbox.pairinggroup import G1, ZR
+
 from Common_DVSC_Functions import Common_DVSC_Functions
 
 class KVAC_GGM(Common_DVSC_Functions):
 
     def __init__(self, groupObject):
-
-        super().__init__(groupObject, groupObject.random(G1))
+        super().__init__(groupObject)
         
 
     def keyGen(self):
 
         generator = self.g1
 
-        x = self.group.random(ZR)
-        v = self.group.random(ZR)
-        r = self.group.random(ZR)
+        x = self.group.random(self.scalarType)
+        v = self.group.random(self.scalarType)
+        r = self.group.random(self.scalarType)
 
         #make the secret key
         isk = (x, v)
@@ -30,22 +29,22 @@ class KVAC_GGM(Common_DVSC_Functions):
     
     def buildCommitmentBasis(self, secretKey, upperBound, y):
 
-        basisElement = y * self.g1
+        basisElement = self.g1 ** y
         commitmentBasis = [basisElement]
 
         for i in range(upperBound):
-            basisElement *= secretKey
+            basisElement = basisElement ** secretKey
 
             commitmentBasis.append(basisElement)
         #return commitment basis
         return commitmentBasis
     
     def sigmaProtocol(self, commitment, iparR, basis, x, v):
-        sigma_C = x * commitment
-        sigma_R = x * iparR
+        sigma_C = commitment ** x
+        sigma_R = iparR ** x
         sigma_basis = []
         for i in range(len(basis)-1):
-            basisElement = v * basis[i]
+            basisElement = basis[i] ** v
             sigma_basis.append(basisElement)
 
         return sigma_C, sigma_R, sigma_basis        
@@ -60,8 +59,8 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         iparR, iparX, ipar_v = ipar 
 
-        random_x = self.group.random(ZR)
-        random_v = self.group.random(ZR)
+        random_x = self.group.random(self.scalarType)
+        random_v = self.group.random(self.scalarType)
 
         #compute announceent
         announcement = self.sigmaProtocol(commitment, iparR, basis, random_x, random_v)
@@ -82,12 +81,12 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         # Compute the announcement
         sigmaAnnouncementC, sigmaAnnouncementR, sigmaAnnouncementBasis = self.sigmaProtocol(commitment, iparR, basis, proof_x, proof_v)
-        announcementTagTau = sigmaAnnouncementC - (challenge * tagTau)
-        announcementX = sigmaAnnouncementR - (challenge * iparX)
+        announcementTagTau = sigmaAnnouncementC / (tagTau ** challenge)
+        announcementX = sigmaAnnouncementR / (iparX ** challenge)
 
         announcement_basis = []
         for i in range(len(basis)-1):
-            announcement_basis.append(sigmaAnnouncementBasis[i] - (challenge * basis[i+1]))
+            announcement_basis.append(sigmaAnnouncementBasis[i] / (basis[i+1] ** challenge))
 
         announcement = (announcementTagTau, announcementX, announcement_basis)
 
@@ -106,16 +105,14 @@ class KVAC_GGM(Common_DVSC_Functions):
         secret_x, secret_v = isk
 
         #sample random y
-        y = self.group.random(ZR)
+        y = self.group.random(self.scalarType)
 
-        # Hash attributes to ZR space and build polynomial
-        attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
-        coefficents = self.createPolynomial(attributes)
-        polynomial = self.evaluatePolynomial(coefficents, secret_v)
-        commitment = (y * polynomial * self.g1)
+        
+        polynomial = self.evaluatePolynomialForVerification(attributesRaw, secret_v)
+        commitment = (self.g1 ** (y * polynomial))
 
         #compute the tag tau
-        tagTau = secret_x * commitment
+        tagTau = commitment ** secret_x
 
         #compute Yj(basis)
         basis = self.buildCommitmentBasis(secret_v, len(attributesRaw), y)
@@ -129,16 +126,16 @@ class KVAC_GGM(Common_DVSC_Functions):
     def obtainCred(self, tagTau, basis, pi, attributesRaw, ipar):
 
         # Hash attributes to ZR space
-        attributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
+        attributes = [self.group.hash(attribute, self.scalarType) for attribute in attributesRaw]
 
         # Compute polynomial
         coefficients = self.createPolynomial(attributes)
-        commitment = self.group.init(G1)
+        commitment = self.groupIdentity()
         for coeff, baseElement in zip(coefficients, basis):
-            commitment += coeff * baseElement
+            commitment = commitment * (baseElement ** coeff)
 
         #make sure commitment is not the basis element
-        if commitment == self.group.init(G1):
+        if commitment == self.groupIdentity():
                 return None
         
         # verify zero knowledge and get check
@@ -154,9 +151,9 @@ class KVAC_GGM(Common_DVSC_Functions):
     def showCred(self, tagTau, basis, attributesRaw, requiredAttributeSubsetRaw):
 
         #get random mu and make sure it is not 0
-        randomScalarMu = self.group.random(ZR)
-        while randomScalarMu == self.group.init(ZR):
-            randomScalarMu = self.group.random(ZR)
+        randomScalarMu = self.group.random(self.scalarType)
+        while randomScalarMu == self.scalarZero():
+            randomScalarMu = self.group.random(self.scalarType)
 
         #check that subset is actually a subset for the attribute set
         if not all(attribute in attributesRaw for attribute in requiredAttributeSubsetRaw):
@@ -166,7 +163,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         witness = self.openSubset(basis, attributesRaw, requiredAttributeSubsetRaw, randomScalarMu)
 
         #randomize the tag
-        randomizedTagTau = randomScalarMu * tagTau
+        randomizedTagTau = tagTau ** randomScalarMu
 
         return randomizedTagTau, witness
     
@@ -174,7 +171,7 @@ class KVAC_GGM(Common_DVSC_Functions):
     def verify(self, randomizedTagTau, witness, requiredAttributeSubsetRaw, isk):
 
         #Make sure that tag is not base element
-        if randomizedTagTau == self.group.init(G1):
+        if randomizedTagTau == self.groupIdentity():
             return False
         
         #get keys
@@ -184,5 +181,5 @@ class KVAC_GGM(Common_DVSC_Functions):
         polynomial = self.evaluatePolynomialForVerification(requiredAttributeSubsetRaw, secret_v)
 
         #make sure that its equal to the tag
-        check = secret_x * witness * polynomial
+        check = witness ** (secret_x * polynomial)
         return check == randomizedTagTau

@@ -46,7 +46,10 @@ def runBenchmark(attributeCount, subsetCount, group):
     times.append(end - start)
 
     ipar_MEQ, ipar_DVSC = ipar
+    challenge, response, commitmentBasis = ipar_DVSC
 
+    assert scheme.SchemeDVSC.verifyIssuerParameter(challenge, response, commitmentBasis)
+    
     start = time.perf_counter()
     tagR, tagT, response, encodedMessages, _ = scheme.issueCred(
         attributeList, isk, ipar_DVSC, ipar_MEQ
@@ -56,7 +59,7 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     start = time.perf_counter()
     tagR, tagT = scheme.obtainCred(
-        attributeList, ipar_DVSC, ipar_MEQ, response, tagR, tagT
+        attributeList, ipar_DVSC, ipar_MEQ, response, tagR, tagT, False
     )
     end = time.perf_counter()
     times.append(end - start)

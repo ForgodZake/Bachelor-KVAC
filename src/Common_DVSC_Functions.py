@@ -4,11 +4,10 @@ from charm.toolbox.ecgroup import G, ZR as EC_ZR
 
 class Common_DVSC_Functions:
 
-    def __init__(self, groupObject, generator):
+    def __init__(self, groupObject, generator=None):
         
         self.group = groupObject
         self.groupSetting = self.group.groupSetting()
-        self.g1 = generator
 
         if self.groupSetting == "ellipctic_curve":
             self.groupElementType = G
@@ -16,6 +15,10 @@ class Common_DVSC_Functions:
         else:
             self.groupElementType = G1
             self.scalarType = PAIRING_ZR
+        if generator is None:
+            self.g1 = self.group.random(self.groupElementType)
+        else:
+            self.g1 = generator
 
     def groupIdentity(self):
         return self.group.init(self.groupElementType)
@@ -25,6 +28,21 @@ class Common_DVSC_Functions:
 
     def scalarOne(self):
         return self.group.init(self.scalarType, 1) 
+    
+    def groupMult(self, element, scalar):
+        if self.groupSetting == "elliptic_curve":
+            return element ** scalar
+        return element * scalar
+    
+    def groupAdd(self, element, scalar):
+        if self.groupSetting == "elliptic_curve":
+            return element * scalar
+        return element + scalar
+    
+    def groupSub(self, element, scalar):
+        if self.groupSetting == "elliptic_curve":
+            return element / scalar
+        return element - scalar
 
     def createPolynomial(self, disclosedAttributes):
         
@@ -80,7 +98,7 @@ class Common_DVSC_Functions:
         coefficients = self.createPolynomial(disclosedRemainingAttributes)
 
         # Create the witness by scaling the commitment with our random mu
-        witness = randomScalarMu * self.createCommitment(coefficients, commitmentBasis)
+        witness = self.groupMult(self.createCommitment(coefficients, commitmentBasis), randomScalarMu)
 
         return witness
     
@@ -90,7 +108,7 @@ class Common_DVSC_Functions:
 
         # create commitment by scaling each basis element by the coefficient (f_i * V_i)
         for i in range(len(coefficients)):
-            commitment += coefficients[i] * commitmentBasis[i]
+            commitment = self.groupAdd(self.groupMult(commitmentBasis[i], coefficients[i]), commitment)
 
         return commitment
     
