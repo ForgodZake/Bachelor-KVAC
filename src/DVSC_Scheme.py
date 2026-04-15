@@ -77,13 +77,9 @@ class DVSC(Common_DVSC_Functions):
 
     def verifySubset(self, secretKey, randomizedCommitment, witness, requiredAttributeSubsetRaw):
 
-        # Hash the disclosed attributes and build the subset polynomial f_D(X)
-        disclosedAttributeSubset = [self.group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
-        coefficients = self.createPolynomial(disclosedAttributeSubset)
-    
         # Evaluate f_D at the secret key v and combine it with the witness
         # to reconstruct the commitment value that should match C'
-        polynomialAtSecret = self.evaluatePolynomial(coefficients, secretKey)
+        polynomialAtSecret = self.evaluatePolynomialForVerification(requiredAttributeSubsetRaw, secretKey)
         commitment = polynomialAtSecret * witness
 
         # Check that the reconstructed commitment value matches the randomized commitment

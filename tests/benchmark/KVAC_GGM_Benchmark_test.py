@@ -1,4 +1,5 @@
-from charm.toolbox.pairinggroup import ZR, PairingGroup
+from charm.toolbox.ecgroup import ECGroup
+from charm.toolbox.eccurve import secp256k1
 from KVAC_GGM_Scheme import KVAC_GGM
 import time
 import pytest
@@ -6,7 +7,7 @@ import pytest
 
 @pytest.fixture
 def group():
-    return PairingGroup('SS512')
+    return ECGroup(secp256k1)
 
 
 def sizeBytes(value, group):

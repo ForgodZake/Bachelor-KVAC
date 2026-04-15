@@ -1,8 +1,9 @@
-from charm.toolbox.pairinggroup import ZR, PairingGroup
+from charm.toolbox.ecgroup import ECGroup
+from charm.toolbox.eccurve import secp256k1
 from KVAC_GGM_Scheme import KVAC_GGM
 
 def test_KVAC_GGM_verifies_correctly():
-    group = PairingGroup('SS512')
+    group = ECGroup(secp256k1)
     scheme = KVAC_GGM(group)
 
     attributeList = ["age", "nationality", "occupation"]

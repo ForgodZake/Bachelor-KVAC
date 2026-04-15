@@ -20,9 +20,9 @@ class KVAC_GGM(Common_DVSC_Functions):
         isk = (x, v)
 
         #compute the public parameters
-        iparR = r * generator
-        iparX = r * x * generator
-        iparv = v * generator
+        iparR = generator ** r
+        iparX =  generator ** (r * x)
+        iparv = generator ** v
 
         ipar = (iparR, iparX, iparv)
 
@@ -171,7 +171,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         return randomizedTagTau, witness
     
 
-    def verify(self, randomizedTagTau, witness, subset, isk):
+    def verify(self, randomizedTagTau, witness, requiredAttributeSubsetRaw, isk):
 
         #Make sure that tag is not base element
         if randomizedTagTau == self.group.init(G1):
@@ -181,13 +181,8 @@ class KVAC_GGM(Common_DVSC_Functions):
         secret_x, secret_v = isk
 
         # Hash attributes to ZR space and compute polynomail
-        attributes = [self.group.hash(attribute, ZR) for attribute in subset]
-        coefficients = self.createPolynomial(attributes)
-        polynomial = self.evaluatePolynomial(coefficients, secret_v)
+        polynomial = self.evaluatePolynomialForVerification(requiredAttributeSubsetRaw, secret_v)
 
         #make sure that its equal to the tag
         check = secret_x * witness * polynomial
-        if check == randomizedTagTau:
-            return True
-        
-        return False
+        return check == randomizedTagTau
