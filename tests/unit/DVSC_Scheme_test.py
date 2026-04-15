@@ -11,7 +11,9 @@ def test_two_differently_randomized_commitments_both_verifies():
 
     attributeList = ["age", "nationality", "occupation"]
 
-    secretKey, _, _, commitmentBasis = scheme.keyGen(len(attributeList))
+    secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))
+
+    assert scheme.verifyIssuerParameter(challenge, response, commitmentBasis)
 
     commitment = scheme.commit(commitmentBasis, attributeList)
     
