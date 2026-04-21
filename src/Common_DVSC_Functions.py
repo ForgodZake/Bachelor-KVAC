@@ -9,12 +9,14 @@ class Common_DVSC_Functions:
         self.group = groupObject
         self.groupSetting = self.group.groupSetting()
 
-        if self.groupSetting == "ellipctic_curve":
+        if self.groupSetting == "elliptic_curve":
             self.groupElementType = G
             self.scalarType = EC_ZR
+            print("G and EC_ZR")
         else:
             self.groupElementType = G1
             self.scalarType = PAIRING_ZR
+            print("G1 and pairing ZR")
         if generator is None:
             self.g1 = self.group.random(self.groupElementType)
         else:
