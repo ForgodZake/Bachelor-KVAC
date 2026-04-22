@@ -105,7 +105,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         return challenge == userChallengeHash
 
 
-    def issueCred(self, attributesRaw, isk, ipar):
+    def issueCred(self, disclosedAttributes, isk, ipar):
 
         #get secret keys and ipar
         secret_x, secret_v = isk
@@ -113,7 +113,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         #sample random y
         y = self.group.random(self.scalarType)
         
-        polynomial = self.evaluatePolynomialForVerification(attributesRaw, secret_v)
+        polynomial = self.evaluatePolynomialForVerification(disclosedAttributes, secret_v)
 
         commitment = (self.g1 ** (y * polynomial))
 
@@ -121,21 +121,18 @@ class KVAC_GGM(Common_DVSC_Functions):
         tagTau = commitment ** secret_x
 
         #compute Yj(basis)
-        basis = self.buildCommitmentBasis(secret_v, len(attributesRaw), y)
+        basis = self.buildCommitmentBasis(secret_v, len(disclosedAttributes), y)
 
         #proof time :)
-        pi = self.makeNIZK(secret_x, secret_v, commitment, ipar, basis, tagTau, attributesRaw)
+        pi = self.makeNIZK(secret_x, secret_v, commitment, ipar, basis, tagTau, disclosedAttributes)
 
         return tagTau, basis, pi
     
 
-    def obtainCred(self, tagTau, basis, pi, attributesRaw, ipar):
-
-        # Hash attributes to ZR space
-        attributes = [self.group.hash(attribute, self.scalarType) for attribute in attributesRaw]
+    def obtainCred(self, tagTau, basis, pi, disclosedAttributes, ipar):
 
         # Compute polynomial
-        coefficients = self.createPolynomial(attributes)
+        coefficients = self.createPolynomial(disclosedAttributes)
         commitment = self.groupIdentity()
         
         for coeff, baseElement in zip(coefficients, basis):
@@ -146,7 +143,7 @@ class KVAC_GGM(Common_DVSC_Functions):
                 return None
         
         # verify zero knowledge and get check
-        check = self.verifyNIZK(pi, commitment, ipar, basis, tagTau, attributesRaw)
+        check = self.verifyNIZK(pi, commitment, ipar, basis, tagTau, disclosedAttributes)
        
         #check that the challenge computed on user and issuer side are the same
         if check == False:
@@ -155,7 +152,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         return tagTau, basis
     
 
-    def showCred(self, tagTau, basis, attributesRaw, requiredAttributeSubsetRaw):
+    def showCred(self, tagTau, basis, disclosedAttributes, requiredAttributeSubset):
 
         #get random mu and make sure it is not 0
         randomScalarMu = self.group.random(self.scalarType)
@@ -163,11 +160,11 @@ class KVAC_GGM(Common_DVSC_Functions):
             randomScalarMu = self.group.random(self.scalarType)
 
         #check that subset is actually a subset for the attribute set
-        if not all(attribute in attributesRaw for attribute in requiredAttributeSubsetRaw):
+        if not all(attribute in disclosedAttributes for attribute in requiredAttributeSubset):
             return None
         
         #make the witness
-        witness = self.openSubset(basis, attributesRaw, requiredAttributeSubsetRaw, randomScalarMu)
+        witness = self.openSubset(basis, disclosedAttributes, requiredAttributeSubset, randomScalarMu)
 
         #randomize the tag
         randomizedTagTau = tagTau ** randomScalarMu
@@ -175,7 +172,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         return randomizedTagTau, witness
     
 
-    def verify(self, randomizedTagTau, witness, requiredAttributeSubsetRaw, isk):
+    def verify(self, randomizedTagTau, witness, requiredAttributeSubset, isk):
 
         #Make sure that tag is not base element
         if randomizedTagTau == self.groupIdentity():
@@ -185,7 +182,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         secret_x, secret_v = isk
 
         # Hash attributes to ZR space and compute polynomail
-        polynomial = self.evaluatePolynomialForVerification(requiredAttributeSubsetRaw, secret_v)
+        polynomial = self.evaluatePolynomialForVerification(requiredAttributeSubset, secret_v)
 
         #make sure that its equal to the tag
         check = witness ** (secret_x * polynomial)

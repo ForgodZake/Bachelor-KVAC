@@ -1,4 +1,4 @@
-from charm.toolbox.pairinggroup import PairingGroup
+from charm.toolbox.pairinggroup import PairingGroup, ZR
 from KVAC_MEQ_Scheme import KVAC_MEQ
 import time
 import pytest
@@ -39,6 +39,8 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     attributeList = buildAttributeList(attributeCount)
     attributeSubsetList = attributeList[:subsetCount]
+    disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
+    disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in attributeSubsetList]
 
     start = time.perf_counter()
     isk, ipar = scheme.keyGen(len(attributeList))
@@ -52,28 +54,28 @@ def runBenchmark(attributeCount, subsetCount, group):
     
     start = time.perf_counter()
     tagR, tagT, response, encodedMessages, _ = scheme.issueCred(
-        attributeList, isk, commitmentBasis, ipar_MEQ
+        disclosedAttributes, isk, commitmentBasis, ipar_MEQ
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
     tagR, tagT = scheme.obtainCred(
-        attributeList, ipar_DVSC, ipar_MEQ, response, tagR, tagT, False
+        disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT, False
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
     randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, attributeList, attributeSubsetList, encodedMessages, ipar_DVSC
+        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
     _ = scheme.verify(
-        randomizedTag, randomizedCommitment, witness, attributeSubsetList, isk
+        randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk
     )
     end = time.perf_counter()
     times.append(end - start)

@@ -43,6 +43,8 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     attributeList = buildAttributeList(attributeCount)
     attributeSubsetList = attributeList[:subsetCount]
+    disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
+    disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in attributeSubsetList]
 
     start = time.perf_counter()
     secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))
@@ -51,7 +53,7 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     start = time.perf_counter()
     _ = scheme.verifyIssuerParameter(challenge, response, commitmentBasis)
-    commitment = scheme.commit(commitmentBasis, attributeList)
+    commitment = scheme.commit(commitmentBasis, disclosedAttributes)
     end = time.perf_counter()
     times.append(end - start)
     
@@ -63,12 +65,12 @@ def runBenchmark(attributeCount, subsetCount, group):
     times.append(end - start)
 
     start = time.perf_counter()
-    witness = scheme.openSubset(commitmentBasis, attributeList, attributeSubsetList, randomScalarMu)
+    witness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, randomScalarMu)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    scheme.verifySubset(secretKey, newCommitment, witness, attributeSubsetList)
+    scheme.verifySubset(secretKey, newCommitment, witness, disclosedAttributeSubset)
     end = time.perf_counter()
     times.append(end - start)
 

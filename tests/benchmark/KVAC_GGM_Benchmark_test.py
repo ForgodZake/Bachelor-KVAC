@@ -1,4 +1,4 @@
-from charm.toolbox.ecgroup import ECGroup
+from charm.toolbox.ecgroup import ECGroup, ZR
 from charm.toolbox.eccurve import secp256k1
 from KVAC_GGM_Scheme import KVAC_GGM
 import time
@@ -40,6 +40,8 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     attributeList = buildAttributeList(attributeCount)
     attributeSubsetList = attributeList[:subsetCount]
+    disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
+    disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in attributeSubsetList]
 
     start = time.perf_counter()
     isk, ipar = scheme.keyGen()
@@ -47,22 +49,22 @@ def runBenchmark(attributeCount, subsetCount, group):
     times.append(end - start)
 
     start = time.perf_counter()
-    tag, basis, pi = scheme.issueCred(attributeList, isk, ipar)
+    tag, basis, pi = scheme.issueCred(disclosedAttributes, isk, ipar)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    tag, basis = scheme.obtainCred(tag, basis, pi, attributeList, ipar)
+    tag, basis = scheme.obtainCred(tag, basis, pi, disclosedAttributes, ipar)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    randomizedTag, witness = scheme.showCred(tag, basis, attributeList, attributeSubsetList)
+    randomizedTag, witness = scheme.showCred(tag, basis, disclosedAttributes, disclosedAttributeSubset)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    _ = scheme.verify(randomizedTag, witness, attributeSubsetList, isk)
+    _ = scheme.verify(randomizedTag, witness, disclosedAttributeSubset, isk)
     end = time.perf_counter()
     times.append(end - start)
 

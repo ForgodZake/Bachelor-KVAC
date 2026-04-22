@@ -153,7 +153,7 @@ class DVSC(Common_DVSC_Functions):
         return challengeCheck == challenge
         
 
-    def commit(self, commitmentBasis, attributesRaw):
+    def commit(self, commitmentBasis, disclosedAttributes):
 
         """
         Notation in paper and our correlating naming scheme:
@@ -166,8 +166,6 @@ class DVSC(Common_DVSC_Functions):
         
         """
 
-        # Hash attributes to ZR space
-        disclosedAttributes = [self.group.hash(attribute, ZR) for attribute in attributesRaw]
         # Get polynomial coefficients
         coefficients = self.createPolynomial(disclosedAttributes)
         
@@ -195,7 +193,7 @@ class DVSC(Common_DVSC_Functions):
         return newCommitment1, newCommitment2
 
 
-    def verifySubset(self, secretKey, randomizedCommitment, witness, requiredAttributeSubsetRaw):
+    def verifySubset(self, secretKey, randomizedCommitment, witness, disclosedAttributeSubset):
         
         """
         Notation in paper and our correlating naming scheme:
@@ -210,7 +208,7 @@ class DVSC(Common_DVSC_Functions):
 
         # Evaluate f_D at the secret key v and combine it with the witness
         # to reconstruct the commitment value that should match C'
-        polynomialAtSecret = self.evaluatePolynomialForVerification(requiredAttributeSubsetRaw, secretKey)
+        polynomialAtSecret = self.evaluatePolynomialForVerification(disclosedAttributeSubset, secretKey)
         commitment = polynomialAtSecret * witness
 
         # Check that the reconstructed commitment value matches the randomized commitment

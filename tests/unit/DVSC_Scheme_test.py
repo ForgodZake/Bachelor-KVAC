@@ -10,12 +10,15 @@ def test_two_differently_randomized_commitments_both_verifies():
     scheme = DVSC(group, g1, gPrime)
     
     attributeList = ["age", "nationality", "occupation"]
+    requiredAttributeSubsetRaw = ["age"]
+    disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
+    disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in requiredAttributeSubsetRaw]
 
     secretKey, challenge, response, commitmentBasis = scheme.keyGen(len(attributeList))
 
     assert scheme.verifyIssuerParameter(challenge, response, commitmentBasis)
 
-    commitment = scheme.commit(commitmentBasis, attributeList)
+    commitment = scheme.commit(commitmentBasis, disclosedAttributes)
     
     randomScalarMu = group.random(ZR)
     differentRandomScalarMu = group.random(ZR)
@@ -25,11 +28,12 @@ def test_two_differently_randomized_commitments_both_verifies():
     newCommitment, _ = scheme.randomize(*commitment, randomScalarMu)
     differentNewCommitment, _ = scheme.randomize(*commitment, differentRandomScalarMu)
 
-    requiredAttributeSubsetRaw = ["age"]
-    witness = scheme.openSubset(commitmentBasis, attributeList, requiredAttributeSubsetRaw, randomScalarMu)
-    differentWitness = scheme.openSubset(commitmentBasis, attributeList, requiredAttributeSubsetRaw, differentRandomScalarMu)
+    
 
-    assert scheme.verifySubset(secretKey, newCommitment, witness, requiredAttributeSubsetRaw) == True
-    assert scheme.verifySubset(secretKey, differentNewCommitment, differentWitness, requiredAttributeSubsetRaw) == True
+    witness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, randomScalarMu)
+    differentWitness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, differentRandomScalarMu)
+
+    assert scheme.verifySubset(secretKey, newCommitment, witness, disclosedAttributeSubset) == True
+    assert scheme.verifySubset(secretKey, differentNewCommitment, differentWitness, disclosedAttributeSubset) == True
 
 

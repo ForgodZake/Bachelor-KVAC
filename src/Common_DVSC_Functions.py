@@ -12,11 +12,9 @@ class Common_DVSC_Functions:
         if self.groupSetting == "elliptic_curve":
             self.groupElementType = G
             self.scalarType = EC_ZR
-            print("G and EC_ZR")
         else:
             self.groupElementType = G1
             self.scalarType = PAIRING_ZR
-            print("G1 and pairing ZR")
         if generator is None:
             self.g1 = self.group.random(self.groupElementType)
         else:
@@ -86,28 +84,26 @@ class Common_DVSC_Functions:
         return result
     
 
-    def evaluatePolynomialForVerification(self, attributesRaw, secretKey):
+    def evaluatePolynomialForVerification(self, disclosedAttributes, secretKey):
         result = self.scalarOne()
 
         # evaluate f_S(v) wihtout computing polynomial as we have access to secretKey
-        for attribute in attributesRaw:
-            hashedAttributes = self.group.hash(attribute, self.scalarType)
-            result *= (secretKey - hashedAttributes)
+        for attribute in disclosedAttributes:
+            result *= (secretKey - attribute)
 
         return result
         
     
-    def openSubset(self, commitmentBasis, attributesRaw, requiredAttributeSubsetRaw, randomScalarMu):
+    def openSubset(self, commitmentBasis, disclosedAttributes, requiredAttributeSubset, randomScalarMu):
 
-        remainingAttributesRaw = []
+        remainingAttributes = []
         # Create the set without the subset (S / D)
-        for i in range(len(attributesRaw)):
-            if not (attributesRaw[i] in requiredAttributeSubsetRaw):
-                remainingAttributesRaw.append(attributesRaw[i])
+        for i in range(len(disclosedAttributes)):
+            if not (disclosedAttributes[i] in requiredAttributeSubset):
+                remainingAttributes.append(disclosedAttributes[i])
 
         # Hash the remaining attributes (needed as they are strings) and create the polynomial
-        disclosedRemainingAttributes = [self.group.hash(attributeRaw, self.scalarType) for attributeRaw in remainingAttributesRaw]
-        coefficients = self.createPolynomial(disclosedRemainingAttributes)
+        coefficients = self.createPolynomial(remainingAttributes)
 
         # Create the witness by scaling the commitment with our random mu
         witness = self.groupMult(self.createCommitment(coefficients, commitmentBasis), randomScalarMu)
