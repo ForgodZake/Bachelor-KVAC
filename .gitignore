@@ -6,4 +6,7 @@ __pycache__
 *.pyc
 *.pyo
 *.pyd
-**/benchmark_Plots/
+tests/benchmark/benchmark_Plots/DVSC_Plots/*
+tests/benchmark/benchmark_Plots/SP_MAC_EQ_Plots/*
+tests/benchmark/benchmark_Plots/KVAC_GGM_Plots/*
+tests/benchmark/benchmark_Plots/KVAC_MEQ_Plots/*
