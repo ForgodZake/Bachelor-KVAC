@@ -1,8 +1,10 @@
 from charm.toolbox.ecgroup import ECGroup, ZR
 from charm.toolbox.eccurve import secp256k1
 from KVAC_GGM_Scheme import KVAC_GGM
-import time
+import matplotlib.pyplot as plt
 import pytest
+import time
+
 
 
 @pytest.fixture
@@ -83,6 +85,8 @@ def runBenchmark(attributeCount, subsetCount, group):
     print("showCred time (ms):", times[3] * 1000)
     print("verifyCred time (ms):", times[4] * 1000)
 
+    return times
+
 
 def test_KVAC_GGM_benchmarks(group):
 
@@ -98,5 +102,36 @@ def test_KVAC_GGM_benchmarks(group):
         (2**12, 2**11),
     ]
 
+    algorithmNames = ["keyGen", "issueCred", "obtainCred", "showCred", "verify"]
+    measurements = {name: [] for name in algorithmNames}
+    attributeSubsetCount = []
+
     for attributeCount, subsetCount in benchmarkSizes:
-        runBenchmark(attributeCount, subsetCount, group)
+        times = runBenchmark(attributeCount, subsetCount, group)
+        attributeSubsetCount.append((attributeCount, subsetCount))
+
+        for name, timeValue in zip(algorithmNames, times):
+            measurements[name].append(timeValue)
+
+    for name in algorithmNames:
+        plotTime(measurements[name], attributeSubsetCount, name, "KVAC_GGM")
+
+def plotTime(listOfTimes, attributeSubsetCount, algorithmName, schemeName):
+
+    positions = range(len(attributeSubsetCount))
+    timesMs = [timeValue * 1000 for timeValue in listOfTimes]
+    labels = [f"({a}, {b})" for a, b in attributeSubsetCount]
+
+    plt.figure()
+    plt.plot(positions, timesMs, label=algorithmName)
+    plt.xticks(positions, labels, rotation=20)
+    plt.xlabel("(AttributeCount, SubsetCount)")
+    plt.ylabel("Time (ms)")
+    plt.legend()
+    plt.grid()
+    plt.savefig(
+        f"/workspace/tests/benchmark/benchmark_Plots/{schemeName}_Plots/{algorithmName}.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()

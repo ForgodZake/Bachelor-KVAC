@@ -1,8 +1,8 @@
-from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1
 from SP_MAC_EQ_Scheme import SP_MAC_EQ
-import time
+import matplotlib.pyplot as plt
 import pytest
-
+import time
 
 @pytest.fixture
 def group():
@@ -78,12 +78,14 @@ def runBenchmark(attributeCount, subsetCount, group):
     print("changeRepresentation time (ms):", times[2] * 1000)
     print("verify (ms):", times[3] * 1000)
 
+    return times
+
 
 def test_SP_MAC_EQ_benchmarks(group):
 
     print("")
     print("")
-    print("SP_MAC_EQ Bencmarks:")
+    print("SP_MAC_EQ Benchmarks:")
 
     benchmarkSizes = [
         (2**4, 2**3),
@@ -93,5 +95,36 @@ def test_SP_MAC_EQ_benchmarks(group):
         (2**12, 2**11),
     ]
 
+    algorithmNames = ["keyGen", "createMac", "changeRepresentation", "verify"]
+    measurements = {name: [] for name in algorithmNames}
+    attributeSubsetCount = []
+
     for attributeCount, subsetCount in benchmarkSizes:
-        runBenchmark(attributeCount, subsetCount, group)
+        times = runBenchmark(attributeCount, subsetCount, group)
+        attributeSubsetCount.append((attributeCount, subsetCount))
+
+        for name, timeValue in zip(algorithmNames, times):
+            measurements[name].append(timeValue)
+
+    for name in algorithmNames:
+        plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ")
+
+def plotTime(listOfTimes, attributeSubsetCount, algorithmName, schemeName):
+
+    positions = range(len(attributeSubsetCount))
+    timesMs = [timeValue * 1000 for timeValue in listOfTimes]
+    labels = [f"({a}, {b})" for a, b in attributeSubsetCount]
+
+    plt.figure()
+    plt.plot(positions, timesMs, label=algorithmName)
+    plt.xticks(positions, labels, rotation=20)
+    plt.xlabel("(AttributeCount, SubsetCount)")
+    plt.ylabel("Time (ms)")
+    plt.legend()
+    plt.grid()
+    plt.savefig(
+        f"/workspace/tests/benchmark/benchmark_Plots/{schemeName}_Plots/{algorithmName}.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()

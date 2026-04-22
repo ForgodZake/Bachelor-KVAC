@@ -56,8 +56,8 @@ RUN git clone https://github.com/JHUISI/charm.git /tmp/charm && \
 RUN python3 -m venv /opt/venv --system-site-packages
 ENV PATH="/opt/venv/bin:${PATH}"
 
-# Upgrade pip tooling inside the venv
-RUN pip install --upgrade pip setuptools wheel pytest
+# Upgrade pip tooling inside the venv and stup pytest numpy and matplotlib
+RUN pip install --upgrade pip setuptools wheel pytest numpy matplotlib
 
 # Optional: create a non-root user for development
 RUN useradd -ms /bin/bash devuser && \
