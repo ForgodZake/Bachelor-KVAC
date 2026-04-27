@@ -28,8 +28,6 @@ def test_two_differently_randomized_commitments_both_verifies():
     newCommitment, _ = scheme.randomize(*commitment, randomScalarMu)
     differentNewCommitment, _ = scheme.randomize(*commitment, differentRandomScalarMu)
 
-    
-
     witness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, randomScalarMu)
     differentWitness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, differentRandomScalarMu)
 

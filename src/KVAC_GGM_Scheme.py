@@ -113,7 +113,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         #sample random y
         y = self.group.random(self.scalarType)
         
-        polynomial = self.evaluatePolynomialForVerification(disclosedAttributes, secret_v)
+        polynomial = self.evaluatePolynomial(disclosedAttributes, secret_v)
 
         commitment = (self.g1 ** (y * polynomial))
 
@@ -182,7 +182,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         secret_x, secret_v = isk
 
         # Hash attributes to ZR space and compute polynomail
-        polynomial = self.evaluatePolynomialForVerification(requiredAttributeSubset, secret_v)
+        polynomial = self.evaluatePolynomial(requiredAttributeSubset, secret_v)
 
         #make sure that its equal to the tag
         check = witness ** (secret_x * polynomial)
