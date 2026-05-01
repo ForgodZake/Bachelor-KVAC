@@ -109,13 +109,27 @@ def test_KVAC_MEQ_benchmarks(group):
     print("")
     print("KVAC_MEQ Benchmarks:")
 
+    benchmarkSizes = []
+
+    #test 1
+    for i in range(2, 2**12):
+        if i % 2 != 0:
+            benchmarkSizes.append((i, int((i+1)/2)))
+        else:
+            benchmarkSizes.append((i, int(i/2)))
+    """
+    #test 2
+    for i in range(1, 2**12):
+        benchmarkSizes.append((2**12, i))
+
+    # paper test marks    
     benchmarkSizes = [
         (2**4, 2**3),
         (2**6, 2**5),
         (2**8, 2**7),
         (2**10, 2**9),
         (2**12, 2**11),
-    ]
+    ]"""
 
     algorithmNames = ["keyGen", "issueCred", "obtainCred", "showCred", "verify"]
     measurements = {name: [] for name in algorithmNames}
