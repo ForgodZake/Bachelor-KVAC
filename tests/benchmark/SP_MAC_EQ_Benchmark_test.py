@@ -30,7 +30,7 @@ def test_SP_MAC_EQ_from_paper_benchmarks(group, algorithmNames):
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "FromPaper")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ", "FromPaper")
 
 
 def test_SP_MAC_EQ_increase_attributes_and_subset_benchmarks(group, algorithmNames):
@@ -51,7 +51,7 @@ def test_SP_MAC_EQ_increase_attributes_and_subset_benchmarks(group, algorithmNam
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseAttributesAndSubset")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ", "increaseAttributesAndSubset")
 
 
 def test_SP_MAC_EQ_increase_only_subset_benchmarks(group, algorithmNames):
@@ -69,7 +69,7 @@ def test_SP_MAC_EQ_increase_only_subset_benchmarks(group, algorithmNames):
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseOnlySubset")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ", "increaseOnlySubset")
 
 
 def test_SP_MAC_EQ_increase_only_attributeList_benchmarks(group, algorithmNames):
@@ -87,7 +87,7 @@ def test_SP_MAC_EQ_increase_only_attributeList_benchmarks(group, algorithmNames)
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseOnlyAttributeList")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ", "increaseOnlyAttributeList")
 
 
 def runBenchmark(attributeCount, subsetCount, group):

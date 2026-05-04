@@ -32,7 +32,7 @@ def test_KVAC_MEQ_from_paper_benchmarks(group, algorithmNames):
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "FromPaper")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "KVAC_MEQ", "FromPaper")
 
 
 def test_KVAC_MEQ_increase_attributes_and_subset_benchmarks(group, algorithmNames):
@@ -53,7 +53,7 @@ def test_KVAC_MEQ_increase_attributes_and_subset_benchmarks(group, algorithmName
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
     for name in algorithmNames:
-        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseAttributesAndSubset")
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "KVAC_MEQ", "increaseAttributesAndSubset")
 
 
 def test_KVAC_MEQ_increase_only_subset_benchmarks(group, algorithmNames):
