@@ -1,6 +1,6 @@
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1
 from SP_MAC_EQ_Scheme import SP_MAC_EQ
-import matplotlib.pyplot as plt
+import generalBenchMarkSetup as setup
 import pytest
 import time
 
@@ -8,29 +8,86 @@ import time
 def group():
     return PairingGroup('SS512')
 
-
-def sizeBytes(value, group):
-    if isinstance(value, str):
-        return len(value.encode("utf-8"))
-    if isinstance(value, bytes):
-        return len(value)
-    if isinstance(value, (list, tuple)):
-        total = 0
-        for item in value:
-            total += sizeBytes(item, group)
-        return total
-    return len(group.serialize(value))
+@pytest.fixture
+def algorithmNames():
+    return ["keyGen_", "createMac_", "changeRepresentation_", "verify_"]
 
 
-def buildAttributeList(attributeCount):
-    attributeList = []
-    baseAttribute = "attribute"
+def test_SP_MAC_EQ_from_paper_benchmarks(group, algorithmNames):
 
-    for i in range(attributeCount):
-        newAttribute = baseAttribute + str(i)
-        attributeList.append(newAttribute)
+    print("")
+    print("")
+    print("SP_MAC_EQ from paper benchmarks:")
 
-    return attributeList
+    benchmarkSizes = [
+        (2**4, 2**3),
+        (2**6, 2**5),
+        (2**8, 2**7),
+        (2**10, 2**9),
+        (2**12, 2**11),
+    ]
+
+    algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
+
+    for name in algorithmNames:
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "FromPaper")
+
+
+def test_SP_MAC_EQ_increase_attributes_and_subset_benchmarks(group, algorithmNames):
+
+    print("")
+    print("")
+    print("SP_MAC_EQ increase attributes and subset benchmarks:")
+
+    benchmarkSizes = []
+
+    for i in range(2, 2**8):
+        if i % 2 != 0:
+            benchmarkSizes.append((i, int((i+1)/2)))
+        else:
+            benchmarkSizes.append((i, int(i/2)))
+
+
+    algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
+
+    for name in algorithmNames:
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseAttributesAndSubset")
+
+
+def test_SP_MAC_EQ_increase_only_subset_benchmarks(group, algorithmNames):
+
+    print("")
+    print("")
+    print("SP_MAC_EQ increase only subset benchmarks:")
+
+    benchmarkSizes = []
+
+    for i in range(1, 2**8):
+        benchmarkSizes.append((2**8, i))
+
+
+    algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
+
+    for name in algorithmNames:
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseOnlySubset")
+
+
+def test_SP_MAC_EQ_increase_only_attributeList_benchmarks(group, algorithmNames):
+
+    print("")
+    print("")
+    print("SP_MAC_EQ increase only attributeList benchmarks:")
+
+    benchmarkSizes = []
+
+    for i in range(1, 2**8):
+        benchmarkSizes.append((i, 1))
+
+
+    algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
+
+    for name in algorithmNames:
+        setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "increaseOnlyAttributeList")
 
 
 def runBenchmark(attributeCount, subsetCount, group):
@@ -42,7 +99,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     times = []
 
 
-    attributeList = buildAttributeList(attributeCount)
+    attributeList = setup.buildAttributeList(attributeCount)
     attributeSubsetList = attributeList[:subsetCount]
 
     start = time.perf_counter()
@@ -79,66 +136,3 @@ def runBenchmark(attributeCount, subsetCount, group):
     print("verify (ms):", times[3] * 1000)
 
     return times
-
-
-def test_SP_MAC_EQ_benchmarks(group):
-
-    print("")
-    print("")
-    print("SP_MAC_EQ Benchmarks:")
-
-    benchmarkSizes = []
-
-    #test 1
-    for i in range(2, 2**9):
-        if i % 2 != 0:
-            benchmarkSizes.append((i, int((i+1)/2)))
-        else:
-            benchmarkSizes.append((i, int(i/2)))
-    """
-    #test 2
-    for i in range(1, 2**12):
-        benchmarkSizes.append((2**8, i))
-
-    # paper test marks    
-    benchmarkSizes = [
-        (2**4, 2**3),
-        (2**6, 2**5),
-        (2**8, 2**7),
-        (2**10, 2**9),
-        (2**12, 2**11),
-    ]"""
-
-    algorithmNames = ["keyGen", "createMac", "changeRepresentation", "verify"]
-    measurements = {name: [] for name in algorithmNames}
-    attributeSubsetCount = []
-
-    for attributeCount, subsetCount in benchmarkSizes:
-        times = runBenchmark(attributeCount, subsetCount, group)
-        attributeSubsetCount.append((attributeCount, subsetCount))
-
-        for name, timeValue in zip(algorithmNames, times):
-            measurements[name].append(timeValue)
-
-    for name in algorithmNames:
-        plotTime(measurements[name], attributeSubsetCount, name, "SP_MAC_EQ")
-
-def plotTime(listOfTimes, attributeSubsetCount, algorithmName, schemeName):
-
-    positions = range(len(attributeSubsetCount))
-    timesMs = [timeValue * 1000 for timeValue in listOfTimes]
-    labels = [f"({a}, {b})" for a, b in attributeSubsetCount]
-
-    plt.figure()
-    plt.plot(positions, timesMs, label=algorithmName)
-    plt.xticks(positions, labels, rotation=20)
-    plt.xlabel("(AttributeCount, SubsetCount)")
-    plt.ylabel("Time (ms)")
-    plt.legend()
-    plt.grid()
-    plt.savefig(
-        f"/workspace/tests/benchmark/benchmark_Plots/{schemeName}_Plots/{algorithmName}.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close()
