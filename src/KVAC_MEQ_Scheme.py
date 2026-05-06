@@ -21,7 +21,7 @@ class KVAC_MEQ:
     def buildPIResponse(self, responseSequence, randomResponseSequence):
 
         #get needed variables
-        randomScalar, challenge, tagRandom, x1, x2 = responseSequence
+        randomScalar, challenge, tagRandom, x1, x2,_ = responseSequence
         randomA, randomX1, randomX2, randomR = randomResponseSequence
 
         #compute the different components of PI proof
@@ -119,6 +119,31 @@ class KVAC_MEQ:
         #check that the new challenge is the same as the challenge computed on the issuer side
         return proofChallenge == newChallenge
 
+    def makeNIZKnonTransferable(self, usk, randomizedGPrime, randomizedUpk, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+        
+        randomizer = self.group.random(ZR)
+        randomizedAnnouncement = randomizer * randomizedGPrime
+
+        challengeAnnouncement = (ipar, randomizedCommitment, randomizedTag, randomizedUpk, disclosedSubset, subsetWitness, randomizedAnnouncement)
+        challenge = self.hashForChallenge(challengeAnnouncement)
+        
+        proofResponse = randomizer + challenge * usk
+
+        return(randomizedAnnouncement, proofResponse)
+    
+
+    def verifyNICKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+        
+        randomizedAnnouncement, proofResponse = proof
+
+        challengeAnnouncement = (ipar, randomizedCommitment, randomizedTag, randomizedUpk, disclosedSubset, subsetWitness, randomizedAnnouncement)
+        challenge = self.hashForChallenge(challengeAnnouncement)
+
+        left = randomizedGPrime * proofResponse
+        right = randomizedAnnouncement + randomizedUpk * challenge
+
+        return left == right
+    
 
     def keyGen(self, attributeListSize):
         #make the secret key from MEQ scheme upperbound of 2
@@ -134,10 +159,11 @@ class KVAC_MEQ:
 
         isk = (sk_MEQ, sk_DVSC, randomScalarR)
         ipar = (iparMEQ, iparDVSC)
-        return isk, ipar
+        
+        return isk, ipar, self.gPrime
     
 
-    def issueCred(self, disclosedAttributes, isk, commitmentBasis, iparMEQ):
+    def issueCred(self, disclosedAttributes, isk, commitmentBasis, iparMEQ, upk):
 
         #parse the secret keys and ipar
         sk_MEQ, _, randomScalarR  = isk
@@ -153,13 +179,16 @@ class KVAC_MEQ:
         randomScalarA = self.group.random(ZR)
         randomScalarAInverse = randomScalarA ** -1
 
+        #add public key to be sent to MAC
+        commitmentList = list(commitment)
+        commitmentList.append(upk)
         #compute the tag from the MEQ scheme
-        tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, list(commitment), randomScalarA)
+        tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, commitmentList, randomScalarA)
       
         # Proof time :)
         proof = self.makeNIZK(sk_MEQ, commitment, iparMEQ, tagR, tagT, disclosedAttributes, randomScalarR, randomScalarAInverse)
 
-        return tagR, tagT, proof, list(commitment), commitment
+        return tagR, tagT, proof, commitmentList, commitment
     
     
     def obtainCred(self, disclosedAttributes, iparDVSC, iparMEQ, proof, tagR, tagT, checkIssuerParamater=False):
@@ -170,6 +199,7 @@ class KVAC_MEQ:
 
         if checkIssuerParamater:
             if not self.SchemeDVSC.verifyIssuerParameter(challenge, response, commitmentBasis):
+                print('1')
                 return None
 
         #make commitment
@@ -177,24 +207,27 @@ class KVAC_MEQ:
 
         #check that iparDVSC is valid
         if commitment is None:
+            print('2')
             return None
 
         # Proof time :)
         check = self.verifyNIZK(proofChallenge, proofSA, proofSX1, proofSX2, proofSR, commitment, disclosedAttributes, tagR, tagT, iparMEQ)
 
         if check == False:
+            print('3')
             return None
         
         return tagR, tagT
     
 
-    def showCred(self, tagR, tagT, disclosedAttributes, requiredAttributesSubset, encodedMessages, iparDVSC):
+    def showCred(self, tagR, tagT, disclosedAttributes, requiredAttributesSubset, encodedMessages, ipar, upk, usk):
         
         #get random scalar
         randomScalarMu = self.group.random(ZR)
         while randomScalarMu == self.group.init(ZR):
             randomScalarMu = self.group.random(ZR)
 
+        _, iparDVSC = ipar
         _,_, commitmentBasis = iparDVSC
 
         #compute the randomized tag
@@ -203,48 +236,35 @@ class KVAC_MEQ:
         #make a commitment
         commitment = self.SchemeDVSC.commit(commitmentBasis, disclosedAttributes)
         #compute randomized commitment
-        ranomizedCommitment = self.SchemeDVSC.randomize(*commitment, randomScalarMu)
+        randomC1, randomC2, randomizedUpk, randomizedGPrime = self.SchemeDVSC.randomize(*commitment, randomScalarMu, upk, self.gPrime)
+
+        randomizedCommitment = (randomC1, randomC2)
 
         #compute witness
         witness = self.SchemeDVSC.openSubset(commitmentBasis, disclosedAttributes, requiredAttributesSubset, randomScalarMu)
 
-        return randomizedTag, ranomizedCommitment, witness
+        proof = self.makeNIZKnonTransferable(usk, randomizedGPrime, randomizedUpk, ipar, randomizedCommitment, randomizedTag, requiredAttributesSubset, witness)
+
+        randomizedCommitment = (randomC1, randomC2, randomizedUpk, randomizedGPrime)
+
+        return randomizedTag, randomizedCommitment, witness, proof
 
 
-    def verify(self, randomizedTag, randomizedCommitment, witness, requiredAttributesSubset, isk):
+    def verify(self, randomizedTag, randomizedCommitment, witness, requiredAttributesSubset, isk, proof, ipar):
 
         sk_MEQ, sk_DVSC, _ = isk
         changedMessages, tagR, tagT = randomizedTag
 
+        randomC1, _, randomizedUpk, randomizedGPrime = randomizedCommitment
+
         #use functions from other two scheme to verify the subset and commtiment
         verifyMEQ = self.SchemeMEQ.verify(sk_MEQ, changedMessages, tagR, tagT)
         verifySubset = self.SchemeDVSC.verifySubset(
-            sk_DVSC, randomizedCommitment[0], witness, requiredAttributesSubset
+            sk_DVSC, randomC1, witness, requiredAttributesSubset
         )
 
-        return verifyMEQ and verifySubset
+        #make sure secret key is valid
+        validSecretKey = self.verifyNICKnonTransferable(randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, requiredAttributesSubset, witness)
 
-
-
-    
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-        
-
-
-
+        return verifyMEQ and verifySubset and validSecretKey
 

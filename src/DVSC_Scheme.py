@@ -215,7 +215,7 @@ class DVSC(Common_DVSC_Functions):
         return commitment, self.gPrime
 
 
-    def randomize(self, commitment1, commitment2, randomScalarMu):
+    def randomize(self, commitment1, commitment2, randomScalarMu, upk, gPrime):
 
         """
         randomize() randomizes a commitment into an equally valid commitment C' = (μC_1, μC_2).
@@ -235,8 +235,10 @@ class DVSC(Common_DVSC_Functions):
 
         newCommitment1 = commitment1 * randomScalarMu
         newCommitment2 = commitment2 * randomScalarMu
+        newUpk = upk * randomScalarMu
+        newGPrime = gPrime * randomScalarMu
 
-        return newCommitment1, newCommitment2
+        return newCommitment1, newCommitment2, newUpk, newGPrime
 
 
     def verifySubset(self, secretKey, randomizedCommitment, witness, disclosedAttributeSubset):

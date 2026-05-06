@@ -73,7 +73,7 @@ class SP_MAC_EQ:
 
         secretKey = []
 
-        for _ in range(length):
+        for _ in range(length + 1):
             scalar = self.group.random(ZR)
             while scalar == self.group.init(ZR):
                 scalar = self.group.random(ZR)

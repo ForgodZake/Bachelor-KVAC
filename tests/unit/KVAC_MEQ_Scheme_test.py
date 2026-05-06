@@ -12,11 +12,21 @@ def test_KVAC_MEQ_verifies_correctly():
     disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
     disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in subset]
 
-    isk, ipar = scheme.keyGen(len(attributeList))
+    
+
+    isk, ipar, gPrime = scheme.keyGen(len(attributeList))
     ipar_MEQ, ipar_DVSC = ipar
     _, _, commitmentBasis = ipar_DVSC
 
-    tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(disclosedAttributes, isk, commitmentBasis, ipar_MEQ)
+    #make secret key
+    usk = group.random(ZR)
+    while usk == group.init(ZR):
+        usk = group.random(ZR)
+    
+    #make public key
+    upk = usk * gPrime
+
+    tagR, tagT, response, encodedMessages, commitment = scheme.issueCred(disclosedAttributes, isk, commitmentBasis, ipar_MEQ, upk)
 
     assert commitment is not None
 
@@ -24,8 +34,8 @@ def test_KVAC_MEQ_verifies_correctly():
 
     assert checkedCommmitment is not None
 
-    randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
+    randomizedTag, randomizedCommitment, witness, proof = scheme.showCred(
+        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar, upk, usk
     )
 
-    assert scheme.verify(randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk) == True
+    assert scheme.verify(randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk, proof, ipar) == True
