@@ -13,6 +13,7 @@ class KVAC_MEQ:
         self.g2 = self.group.random(G2)
         self.gPrime = self.group.random(G1)
         self.gPPrime = self.group.random(G1)
+        self.gUpk = self.group.random(G1)
 
         self.SchemeDVSC = DVSC(self.group, self.g1, self.gPrime)
         self.SchemeMEQ = SP_MAC_EQ(self.group, self.g1, self.g2)
@@ -21,16 +22,17 @@ class KVAC_MEQ:
     def buildPIResponse(self, responseSequence, randomResponseSequence):
 
         #get needed variables
-        randomScalar, challenge, tagRandom, x1, x2,_ = responseSequence
-        randomA, randomX1, randomX2, randomR = randomResponseSequence
+        randomScalar, challenge, tagRandom, x1, x2, x3 = responseSequence
+        randomA, randomX1, randomX2, randomX3, randomR = randomResponseSequence
 
         #compute the different components of PI proof
         sA = (randomA) + (challenge * tagRandom)
         sX1 = randomX1 + (challenge * x1)
         sX2 = randomX2 + (challenge * x2)
+        sX3 = randomX3 + (challenge * x3)
         sR = randomR + (challenge * randomScalar)
 
-        return challenge, sA, sX1, sX2, sR
+        return challenge, sA, sX1, sX2, sX3, sR
     
 
     def hashForChallenge(self, announcementSequence):
@@ -59,15 +61,15 @@ class KVAC_MEQ:
         return self.group.serialize(announcementSequence)
 
 
-    def sigmaProtocol(self, randomScalar, x1, x2, r, commitment, tagR):
+    def sigmaProtocol(self, randomScalar, x1, x2, x3, r, commitment, tagR):
 
-        c1, c2 = commitment
+        c1, c2, upk = commitment
         #compute X = x1 * G1 + x2 * G' + r * G''
-        x = (x1 * self.g1) + (x2 * self.gPrime) + (r * self.gPPrime)
+        x = (x1 * self.g1) + (x2 * self.gPrime) + (x3 * self.gUpk) + (r * self.gPPrime)
         #T is the same as tag T
         t1 = randomScalar * self.g2
         #compute x1 * C1 + x2 * C2
-        t2 = (x1 * c1) + (x2 * c2) - (randomScalar * tagR)
+        t2 = (x1 * c1) + (x2 * c2) + (x3 * upk) - (randomScalar * tagR)
         return x, t1, t2
     
 
@@ -76,11 +78,12 @@ class KVAC_MEQ:
         #sample to get the needed variables
         randomProofAInverse = self.group.random(ZR)
         randomProofX1 = self.group.random(ZR)
-        randomProofX2= self.group.random(ZR)
+        randomProofX2 = self.group.random(ZR)
+        randomProofX3 = self.group.random(ZR)
         randomProofR = self.group.random(ZR)
 
         #Build sequence to give to sigma protocol (Ra, Rx1, Rx2, Rr, C, R)
-        randomParameters = (randomProofAInverse, randomProofX1, randomProofX2, randomProofR, commitment, tagR)
+        randomParameters = (randomProofAInverse, randomProofX1, randomProofX2, randomProofX3, randomProofR, commitment, tagR)
 
         #Compute the sigma protocol
         randomAnnouncement  = self.sigmaProtocol(*randomParameters)
@@ -92,7 +95,7 @@ class KVAC_MEQ:
 
         #Make the two sequences that are needed to make the full Pi proof
         responseSequence = (randomScalarR, challenge, randomScalarAInverse, *sk_MEQ)
-        randomResponseSequence = (randomProofAInverse, randomProofX1, randomProofX2, randomProofR)
+        randomResponseSequence = (randomProofAInverse, randomProofX1, randomProofX2, randomProofX3, randomProofR)
         
         #Build the final PI response as the proof
         finalProof = self.buildPIResponse(responseSequence, randomResponseSequence)
@@ -100,10 +103,10 @@ class KVAC_MEQ:
         return finalProof
 
         
-    def verifyNIZK(self, proofChallenge, proofSA, proofSX1, proofSX2, proofSR, commitment, disclosedAttributes, tagR, tagT, iparMEQ):
+    def verifyNIZK(self, proofChallenge, proofSA, proofSX1, proofSX2, proofSX3, proofSR, commitment, disclosedAttributes, tagR, tagT, iparMEQ):
 
         #Compute the first part for verifying the PI proof
-        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(proofSA, proofSX1, proofSX2, proofSR, commitment, tagR)
+        sigmaX, sigmaT1, sigmaT2 = self.sigmaProtocol(proofSA, proofSX1, proofSX2, proofSX3, proofSR, commitment, tagR)
     
         # unique accepting Sigma protocol announcement (UASPA)
         iparMEQ_UASPA = sigmaX - proofChallenge * iparMEQ
@@ -147,7 +150,7 @@ class KVAC_MEQ:
 
     def keyGen(self, attributeListSize):
         #make the secret key from MEQ scheme upperbound of 2
-        sk_MEQ = self.SchemeMEQ.keyGen(2)
+        sk_MEQ = self.SchemeMEQ.keyGen(3)
 
         #get the ipar and secret key from DVSC scheme
         sk_DVSC, challenge, response, commitmentBasis = self.SchemeDVSC.keyGen(attributeListSize)
@@ -155,7 +158,7 @@ class KVAC_MEQ:
 
         #compute the MEQ ipar as stated in the book
         randomScalarR = self.group.random(ZR)
-        iparMEQ = (sk_MEQ[0] * self.g1) + (sk_MEQ[1] * self.gPrime) + (randomScalarR * self.gPPrime)
+        iparMEQ = (sk_MEQ[0] * self.g1) + (sk_MEQ[1] * self.gPrime) + (sk_MEQ[2] * self.gUpk) + (randomScalarR * self.gPPrime)
 
         isk = (sk_MEQ, sk_DVSC, randomScalarR)
         ipar = (iparMEQ, iparDVSC)
@@ -186,15 +189,15 @@ class KVAC_MEQ:
         tagR, tagT = self.SchemeMEQ.createMac(sk_MEQ, commitmentList, randomScalarA)
       
         # Proof time :)
-        proof = self.makeNIZK(sk_MEQ, commitment, iparMEQ, tagR, tagT, disclosedAttributes, randomScalarR, randomScalarAInverse)
+        proof = self.makeNIZK(sk_MEQ, commitmentList, iparMEQ, tagR, tagT, disclosedAttributes, randomScalarR, randomScalarAInverse)
 
         return tagR, tagT, proof, commitmentList, commitment
     
     
-    def obtainCred(self, disclosedAttributes, iparDVSC, iparMEQ, proof, tagR, tagT, checkIssuerParamater=False):
+    def obtainCred(self, disclosedAttributes, iparDVSC, iparMEQ, proof, tagR, tagT, upk, checkIssuerParamater=False):
 
         #get needed variables
-        proofChallenge, proofSA, proofSX1, proofSX2, proofSR = proof
+        proofChallenge, proofSA, proofSX1, proofSX2, proofSX3, proofSR = proof
         challenge, response, commitmentBasis = iparDVSC
 
         if checkIssuerParamater:
@@ -209,9 +212,10 @@ class KVAC_MEQ:
         if commitment is None:
             print('2')
             return None
-
+        commitmentList = list(commitment)
+        commitmentList.append(upk)
         # Proof time :)
-        check = self.verifyNIZK(proofChallenge, proofSA, proofSX1, proofSX2, proofSR, commitment, disclosedAttributes, tagR, tagT, iparMEQ)
+        check = self.verifyNIZK(proofChallenge, proofSA, proofSX1, proofSX2, proofSX3, proofSR, commitmentList, disclosedAttributes, tagR, tagT, iparMEQ)
 
         if check == False:
             print('3')
@@ -238,14 +242,12 @@ class KVAC_MEQ:
         #compute randomized commitment
         randomC1, randomC2, randomizedUpk, randomizedGPrime = self.SchemeDVSC.randomize(*commitment, randomScalarMu, upk, self.gPrime)
 
-        randomizedCommitment = (randomC1, randomC2)
+        randomizedCommitment = (randomC1, randomC2, randomizedUpk, randomizedGPrime)
 
         #compute witness
         witness = self.SchemeDVSC.openSubset(commitmentBasis, disclosedAttributes, requiredAttributesSubset, randomScalarMu)
 
         proof = self.makeNIZKnonTransferable(usk, randomizedGPrime, randomizedUpk, ipar, randomizedCommitment, randomizedTag, requiredAttributesSubset, witness)
-
-        randomizedCommitment = (randomC1, randomC2, randomizedUpk, randomizedGPrime)
 
         return randomizedTag, randomizedCommitment, witness, proof
 

@@ -101,10 +101,19 @@ def runBenchmark(attributeCount, subsetCount, group):
     disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
     disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in attributeSubsetList]
 
+
     start = time.perf_counter()
-    isk, ipar = scheme.keyGen(len(attributeList))
+    isk, ipar, gPrime = scheme.keyGen(len(attributeList))
     end = time.perf_counter()
     times.append(end - start)
+
+    #make secret key
+    usk = group.random(ZR)
+    while usk == group.init(ZR):
+        usk = group.random(ZR)
+    
+    #make public key
+    upk = usk * gPrime
 
     ipar_MEQ, ipar_DVSC = ipar
     challenge, response, commitmentBasis = ipar_DVSC
@@ -113,28 +122,28 @@ def runBenchmark(attributeCount, subsetCount, group):
     
     start = time.perf_counter()
     tagR, tagT, response, encodedMessages, _ = scheme.issueCred(
-        disclosedAttributes, isk, commitmentBasis, ipar_MEQ
+        disclosedAttributes, isk, commitmentBasis, ipar_MEQ, upk
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    tagR, tagT = scheme.obtainCred(
-        disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT, False
+    _ = scheme.obtainCred(
+        disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT, upk, False
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
+    randomizedTag, randomizedCommitment, witness, proof = scheme.showCred(
+        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar, upk, usk
     )
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
     _ = scheme.verify(
-        randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk
+        randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk, proof, ipar
     )
     end = time.perf_counter()
     times.append(end - start)

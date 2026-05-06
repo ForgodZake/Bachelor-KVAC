@@ -8,6 +8,8 @@ def test_two_differently_randomized_commitments_both_verifies():
     g1 = group.random(G1)
     gPrime = group.random(G1)
     scheme = DVSC(group, g1, gPrime)
+
+    upk = group.random(ZR)
     
     attributeList = ["age", "nationality", "occupation"]
     requiredAttributeSubsetRaw = ["age"]
@@ -25,8 +27,8 @@ def test_two_differently_randomized_commitments_both_verifies():
 
     assert randomScalarMu != differentRandomScalarMu
 
-    newCommitment, _ = scheme.randomize(*commitment, randomScalarMu)
-    differentNewCommitment, _ = scheme.randomize(*commitment, differentRandomScalarMu)
+    newCommitment, _, _ ,_  = scheme.randomize(*commitment, randomScalarMu, upk, gPrime)
+    differentNewCommitment, _, _ ,_ = scheme.randomize(*commitment, differentRandomScalarMu, upk, gPrime)
 
     witness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, randomScalarMu)
     differentWitness = scheme.openSubset(commitmentBasis, disclosedAttributes, disclosedAttributeSubset, differentRandomScalarMu)

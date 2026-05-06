@@ -94,6 +94,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     g1 = group.random(G1)
     gPrime = group.random(G1)
     scheme = DVSC(group, g1, gPrime)
+    upk = group.random(ZR)
     times = []
     
 
@@ -116,7 +117,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     randomScalarMu = group.random(ZR)
 
     start = time.perf_counter()
-    newCommitment, _ = scheme.randomize(*commitment, randomScalarMu)
+    newCommitment, _, _, _ = scheme.randomize(*commitment, randomScalarMu, upk, gPrime)
     end = time.perf_counter()
     times.append(end - start)
 
