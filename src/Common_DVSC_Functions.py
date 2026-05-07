@@ -31,6 +31,7 @@ class Common_DVSC_Functions:
         if self.groupSetting == "elliptic_curve":
             self.groupElementType = G
             self.scalarType = EC_ZR
+            self.gPrime = self.group.random(self.groupElementType)
         else:
             self.groupElementType = G1
             self.scalarType = PAIRING_ZR

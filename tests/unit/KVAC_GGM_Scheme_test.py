@@ -12,15 +12,23 @@ def test_KVAC_GGM_verifies_correctly():
     disclosedAttributes = [group.hash(attribute, ZR) for attribute in attributeList]
     disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in subset]
 
-    isk, ipar = scheme.keyGen()
+    isk, ipar, gPrime = scheme.keyGen()
+        #make secret key
 
-    tag, basis, pi = scheme.issueCred(disclosedAttributes, isk, ipar)
+    usk = group.random(ZR)
+    while usk == group.init(ZR):
+        usk = group.random(ZR)
 
-    tag, basis = scheme.obtainCred(tag, basis, pi, disclosedAttributes, ipar)
+    #make public key
+    upk = gPrime ** usk
+
+    tag, basis, pi = scheme.issueCred(disclosedAttributes, isk, ipar, upk)
+
+    tag, basis, commitment = scheme.obtainCred(tag, basis, pi, disclosedAttributes, ipar, upk)
 
     assert tag, basis is not None
 
-    randomizedTag, witness = scheme.showCred(tag, basis, disclosedAttributes, disclosedAttributeSubset)
+    randomizedTag, witness, proof, randomizedUpk, randomizedGPrime, randomizedCommitment = scheme.showCred(tag, basis, disclosedAttributes, disclosedAttributeSubset, usk, upk, ipar, commitment)
 
-    assert scheme.verify(randomizedTag, witness, disclosedAttributeSubset, isk) == True
+    assert scheme.verify(randomizedTag, witness, disclosedAttributeSubset, isk, randomizedCommitment, ipar, randomizedUpk, randomizedGPrime, proof) == True
 

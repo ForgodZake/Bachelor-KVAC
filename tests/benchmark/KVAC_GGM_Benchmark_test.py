@@ -102,27 +102,34 @@ def runBenchmark(attributeCount, subsetCount, group):
     disclosedAttributeSubset = [group.hash(attribute, ZR) for attribute in attributeSubsetList]
 
     start = time.perf_counter()
-    isk, ipar = scheme.keyGen()
+    isk, ipar, gPrime = scheme.keyGen()
+    end = time.perf_counter()
+    times.append(end - start)
+
+    usk = group.random(ZR)
+    while usk == group.init(ZR):
+        usk = group.random(ZR)
+
+    #make public key
+    upk = gPrime ** usk
+
+    start = time.perf_counter()
+    tag, basis, pi = scheme.issueCred(disclosedAttributes, isk, ipar, upk)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    tag, basis, pi = scheme.issueCred(disclosedAttributes, isk, ipar)
+    tag, basis, commitment = scheme.obtainCred(tag, basis, pi, disclosedAttributes, ipar, upk)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    tag, basis = scheme.obtainCred(tag, basis, pi, disclosedAttributes, ipar)
+    randomizedTag, witness, proof, randomizedUpk, randomizedGPrime, randomizedCommitment = scheme.showCred(tag, basis, disclosedAttributes, disclosedAttributeSubset, usk, upk, ipar, commitment)
     end = time.perf_counter()
     times.append(end - start)
 
     start = time.perf_counter()
-    randomizedTag, witness = scheme.showCred(tag, basis, disclosedAttributes, disclosedAttributeSubset)
-    end = time.perf_counter()
-    times.append(end - start)
-
-    start = time.perf_counter()
-    _ = scheme.verify(randomizedTag, witness, disclosedAttributeSubset, isk)
+    _ = scheme.verify(randomizedTag, witness, disclosedAttributeSubset, isk, randomizedCommitment, ipar, randomizedUpk, randomizedGPrime, proof)
     end = time.perf_counter()
     times.append(end - start)
 
