@@ -119,7 +119,7 @@ def runBenchmark(attributeCount, subsetCount, group):
     times.append(end - start)
 
     start = time.perf_counter()
-    tagR, tagT = scheme.obtainCred(
+    (tagR, tagT), commitment = scheme.obtainCred(
         disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT, False
     )
     end = time.perf_counter()
@@ -127,7 +127,7 @@ def runBenchmark(attributeCount, subsetCount, group):
 
     start = time.perf_counter()
     randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
+        tagR, tagT, commitment, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
     )
     end = time.perf_counter()
     times.append(end - start)

@@ -352,10 +352,10 @@ class KVAC_MEQ:
         if check == False:
             return None
         
-        return tagR, tagT
+        return (tagR, tagT), commitment
     
 
-    def showCred(self, tagR, tagT, disclosedAttributes, requiredAttributesSubset, encodedMessages, iparDVSC):
+    def showCred(self, tagR, tagT, commitment, disclosedAttributes, requiredAttributesSubset, encodedMessages, iparDVSC):
         
         """
         showCred() is used to create a new randomized presentation.
@@ -388,8 +388,6 @@ class KVAC_MEQ:
         #compute the randomized tag
         randomizedTag = self.SchemeMEQ.changeRepresentation(encodedMessages, tagR, tagT, randomScalarMu)
 
-        #make a commitment
-        commitment = self.SchemeDVSC.commit(commitmentBasis, disclosedAttributes)
         #compute randomized commitment
         randomizedCommitment = self.SchemeDVSC.randomize(*commitment, randomScalarMu)
 

@@ -140,7 +140,7 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         #make sure commitment is not the basis element
         if commitment == self.groupIdentity():
-                return None
+            return None
         
         # verify zero knowledge and get check
         check = self.verifyNIZK(pi, commitment, ipar, basis, tagTau, disclosedAttributes)
