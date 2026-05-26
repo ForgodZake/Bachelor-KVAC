@@ -20,12 +20,12 @@ def test_KVAC_MEQ_verifies_correctly():
 
     assert commitment is not None
 
-    checkedCommmitment, commitment = scheme.obtainCred(disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT)
+    checkedCommmitment = scheme.obtainCred(disclosedAttributes, ipar_DVSC, ipar_MEQ, response, tagR, tagT)
 
     assert checkedCommmitment is not None
 
     randomizedTag, randomizedCommitment, witness = scheme.showCred(
-        tagR, tagT, commitment, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
+        tagR, tagT, disclosedAttributes, disclosedAttributeSubset, encodedMessages, ipar_DVSC
     )
 
     assert scheme.verify(randomizedTag, randomizedCommitment, witness, disclosedAttributeSubset, isk) == True
