@@ -89,7 +89,6 @@ def test_KVAC_MEQ_increase_only_attributeList_benchmarks(group, algorithmNames):
         (2**12, 1),
         
     ]
-    
 
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 

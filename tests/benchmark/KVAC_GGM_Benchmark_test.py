@@ -46,7 +46,6 @@ def test_DVSC_increase_only_subset_benchmarks(group, algorithmNames):
     print("")
     print("KVAC_GGM increase only subset benchmarks:")
 
-    benchmarkSizes = []
 
     benchmarkSizes = [
         (2**12, 2**2),
@@ -76,7 +75,6 @@ def test_DVSC_increase_only_attributeList_benchmarks(group, algorithmNames):
     print("KVAC_GGM increase only attributeList benchmarks:")
 
     
-
     benchmarkSizes = [
         (2**2, 1),
         (2**3, 1),

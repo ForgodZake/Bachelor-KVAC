@@ -37,17 +37,27 @@ def test_DVSC_from_paper_benchmarks(group, algorithmNames):
         setup.plotTime(measurements[name], attributeSubsetCount, name, "DVSC", "FromPaper")
 
 
+
 def test_DVSC_increase_only_subset_benchmarks(group, algorithmNames):
 
     print("")
     print("")
     print("DVSC increase only subset benchmarks:")
 
-    benchmarkSizes = []
-
-    for i in range(1, 2**8):
-        benchmarkSizes.append((2**8, i))
-
+    benchmarkSizes = [
+        (2**12, 2**2),
+        (2**12, 2**3),
+        (2**12, 2**4),
+        (2**12, 2**5),
+        (2**12, 2**6),
+        (2**12, 2**7),
+        (2**12, 2**8),
+        (2**12, 2**9),
+        (2**12, 2**10),
+        (2**12, 2**11),
+        (2**12, 2**12),
+        
+    ]
 
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
@@ -61,11 +71,20 @@ def test_DVSC_increase_only_attributeList_benchmarks(group, algorithmNames):
     print("")
     print("DVSC increase only attributeList benchmarks:")
 
-    benchmarkSizes = []
-
-    for i in range(1, 2**8):
-        benchmarkSizes.append((i, 1))
-
+    benchmarkSizes = [
+        (2**2, 1),
+        (2**3, 1),
+        (2**4, 1),
+        (2**5, 1),
+        (2**6, 1),
+        (2**7, 1),
+        (2**8, 1),
+        (2**9, 1),
+        (2**10, 1),
+        (2**11, 1),
+        (2**12, 1),
+        
+    ]
 
     algorithmNames, measurements, attributeSubsetCount = setup.getTestSetup(benchmarkSizes, group, runBenchmark, algorithmNames)
 
