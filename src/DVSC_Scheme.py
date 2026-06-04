@@ -34,7 +34,7 @@ class DVSC(Common_DVSC_Functions):
         which is used for initializing both DVSC and KVAC_GGM.
 
         Used by:
-        The Issuer will initialize the DVSC scheme object.
+        - Issuer will initialize the DVSC scheme object.
 
         Notation in paper and our correlating naming scheme:
         - groupObject: The bilinear group of type-3 noted BG, which is returned by MEQ.SetupR(1^λ).
@@ -59,7 +59,7 @@ class DVSC(Common_DVSC_Functions):
         Build the public commitment basis (V_0, ..., V_t), where V_j = v^j * G.
 
         Used by:
-        The issuer initially uses this method through keyGen()
+        - Issuer initially uses this method through keyGen()
         The resulting commitmentBasis is later used by issuer and user when computing commitments and subset openings.
 
         Notation in paper and our correlating naming scheme:

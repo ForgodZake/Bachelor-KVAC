@@ -6,7 +6,7 @@ class KVAC_MEQ:
 
     """
     Implementation of the Keyed-Verification Anonymous Credentials with Highly Efficient Partial Disclosure (KVAC-MEQ).
-    This is described in section five of Keyed-Verification Anonymous Credentials.
+    This is described in section five of Keyed-Verification Anonymous Credentials with Highly Efficient Partial Disclosure.
 
     KVAC-MEQ combines:
     - DVSC: used to commit to an attribute set S and later open a subset D ⊆ S.
