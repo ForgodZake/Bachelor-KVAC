@@ -5,8 +5,25 @@ from SP_MAC_EQ_Scheme import SP_MAC_EQ
 
 
 class KVAC_MEQ:
+    """
+    Extended KVAC-MEQ scheme with:
+    - Added user public key binding (upk) into commitments and MAC computation
+    - Extended SP-MAC-EQ secret key to (x1, x2, x3)
+    - Added non-transferability (NICK-style proof) for credential presentation
+    - Modified DVSC commitment representation to include public key randomness binding
+
+    """
 
     def __init__(self, groupObject):
+        """
+        Extension:
+        Pupblic parameters have additional gUpk 
+        pp is now := (G_1, G_2, G_T, p, e, g1, g2, g', g'', gUpk)
+
+        Used by:
+        -key generation and issuer to bind users public key to message
+
+        """
         
         self.group = groupObject
         self.g1 = self.group.random(G1)
@@ -20,6 +37,13 @@ class KVAC_MEQ:
 
 
     def buildPIResponse(self, responseSequence, randomResponseSequence):
+        """
+        Extension:
+        - SP-MAC-EQ secret key extended from (x1, x2) → (x1, x2, x3)
+        - Adds third response component sX3 for Fiat-Shamir proof consistency
+        - Required due to inclusion of public key generator gUpk in MAC structure
+
+        """
 
         #get needed variables
         randomScalar, challenge, tagRandom, x1, x2, x3 = responseSequence
@@ -62,6 +86,13 @@ class KVAC_MEQ:
 
 
     def sigmaProtocol(self, randomScalar, x1, x2, x3, r, commitment, tagR):
+        """
+        Extension:
+        - Sigma protocol now includes x3 and gUpk binding
+        - Commitment structure extended:
+            X = x1*g1 + x2*g' + x3*gUpk + r*g''
+        - Ensures MAC consistency now includes user public key component
+        """
 
         c1, c2, upk = commitment
         #compute X = x1 * G1 + x2 * G' + r * G''
@@ -74,7 +105,12 @@ class KVAC_MEQ:
     
 
     def makeNIZK(self, sk_MEQ, commitment, iparMEQ, tagR, tagT, disclosedAttributes, randomScalarR, randomScalarAInverse):
-
+        """
+        Extension:
+        - Proof now includes additional witness x3 and corresponding randomness
+        - Enables consistency proof over extended MAC key (x1, x2, x3)
+        - Commitment now includes public key, making proof binding to user identity
+        """
         #sample to get the needed variables
         randomProofAInverse = self.group.random(ZR)
         randomProofX1 = self.group.random(ZR)
@@ -123,7 +159,18 @@ class KVAC_MEQ:
         return proofChallenge == newChallenge
 
     def makeNIZKnonTransferable(self, usk, randomizedGPrime, randomizedUpk, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
-        
+        """
+        Non-transferability proof (NIZK-style construction)
+
+        Purpose:
+        - Proves possession of secret user key (usk)
+        - Binds credential presentation to a specific user public key
+        - Prevents credential sharing between users
+
+        Construction:
+        - Fiat-Shamir proof of knowledge of usk
+        - Uses randomized commitment and tag context
+        """
         randomizer = self.group.random(ZR)
         randomizedAnnouncement = randomizer * randomizedGPrime
 
@@ -135,8 +182,12 @@ class KVAC_MEQ:
         return(randomizedAnnouncement, proofResponse)
     
 
-    def verifyNICKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
-        
+    def verifyNIZKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+        """
+        Extension:
+        - Verifies Schnorr-style proof of knowledge of user secret key
+        - Ensures presentation is bound to randomizedUpk and randomizedGPrime
+        """
         randomizedAnnouncement, proofResponse = proof
 
         challengeAnnouncement = (ipar, randomizedCommitment, randomizedTag, randomizedUpk, disclosedSubset, subsetWitness, randomizedAnnouncement)
@@ -149,6 +200,13 @@ class KVAC_MEQ:
     
 
     def keyGen(self, attributeListSize):
+        """
+        Extension:
+        - MAC key extended to 3 components (x1, x2, x3)
+        - Public key generator gUpk introduced into system
+        - iparMEQ now binds credentials to user public key space
+        """
+
         #make the secret key from MEQ scheme upperbound of 2
         sk_MEQ = self.SchemeMEQ.keyGen(3)
 
@@ -167,7 +225,12 @@ class KVAC_MEQ:
     
 
     def issueCred(self, disclosedAttributes, isk, commitmentBasis, iparMEQ, upk):
-
+        """
+        Extension:
+        - Commitment is augmented with user public key (upk)
+        - MAC tag is now computed over (commitment, upk)
+        - Ensures credential is bound to a specific user identity
+        """
         #parse the secret keys and ipar
         sk_MEQ, _, randomScalarR  = isk
 
@@ -195,6 +258,11 @@ class KVAC_MEQ:
     
     
     def obtainCred(self, disclosedAttributes, iparDVSC, iparMEQ, proof, tagR, tagT, upk, checkIssuerParamater=False):
+        """
+        Extension:
+        - Verification ensures MAC tag consistency with upk binding
+        - Prevents credential reuse with different public keys
+        """
 
         #get needed variables
         proofChallenge, proofSA, proofSX1, proofSX2, proofSX3, proofSR = proof
@@ -225,7 +293,15 @@ class KVAC_MEQ:
     
 
     def showCred(self, tagR, tagT, disclosedAttributes, requiredAttributesSubset, encodedMessages, ipar, upk, usk):
-        
+        """
+        Extension:
+        - Adds non-transferability layer via proof of secret key possession
+        - Randomized presentation now binds:
+            - commitment
+            - MAC tag
+            - user public key
+        - Ensures credential cannot be replayed by another user
+        """
         #get random scalar
         randomScalarMu = self.group.random(ZR)
         while randomScalarMu == self.group.init(ZR):
@@ -253,7 +329,13 @@ class KVAC_MEQ:
 
 
     def verify(self, randomizedTag, randomizedCommitment, witness, requiredAttributesSubset, isk, proof, ipar):
-
+        """
+        Extension:
+        - Verification now includes:
+            1. SP-MAC-EQ verification
+            2. DVSC subset verification
+            3. Non-transferability proof verification(NEW)
+        """
         sk_MEQ, sk_DVSC, _ = isk
         changedMessages, tagR, tagT = randomizedTag
 

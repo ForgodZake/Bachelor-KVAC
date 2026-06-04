@@ -2,13 +2,37 @@
 from Common_DVSC_Functions import Common_DVSC_Functions
 
 class KVAC_GGM(Common_DVSC_Functions):
+    """
+    Extended KVAC-GGM scheme with public-key binding and non-transferability.
+
+    Main extensions compared to baseline KVAC-GGM:
+    1. MAC key expanded from (x) → (x1, x2, x3)
+    2. Credential issuance now binds to user public key (upk)
+    3. MAC tag depends on both commitment and upk
+    4. Presentation includes non-transferability proof (Schnorr-style)
+    5. Randomized presentation binds:
+        - commitment
+        - tag
+        - public key
+        - group element G'
+
+    Security goal:
+    Ensures credentials are not transferable between users and are bound
+    to a specific secret key (usk).
+    """
 
     def __init__(self, groupObject):
         super().__init__(groupObject)
         
 
     def keyGen(self):
-
+        """
+        Extension:
+        - MAC secret key expanded to (x1, x2, x3)
+        - Public-key binding introduced via gPrime
+        - Issuer parameter now supports per-component exponentiation structure
+        """
+        
         generator = self.g1
 
         x1 = self.group.random(self.scalarType)
@@ -50,6 +74,15 @@ class KVAC_GGM(Common_DVSC_Functions):
     
 
     def sigmaProtocol(self, commitment, iparR, upk, basis, x1, x2, x3, v):
+        """
+        Extension:
+        - Sigma protocol now binds MAC computation to:
+            - commitment
+            - public key (upk)
+            - extended MAC key (x1, x2, x3)
+
+        This ensures correctness of MAC under public-key binding.
+        """
 
         sigma_C = (commitment ** x1) * (self.gPrime ** x2) * (upk ** x3)
         sigma_R1 = iparR ** x1
@@ -78,6 +111,16 @@ class KVAC_GGM(Common_DVSC_Functions):
 
 
     def makeNIZK(self, secretKeyMac, secretKeySetCommitment, commitment, ipar, basis, tagTau, attributesRaw, upk):
+        """
+        Extension:
+        - Fiat-Shamir proof now includes upk as binding input
+        - Proof covers extended MAC key (x1, x2, x3)
+        - Ensures consistency between:
+            - commitment
+            - tag
+            - issuer parameters
+            - user public key
+        """
 
         iparR, iparX, ipar_v = ipar
 
@@ -127,6 +170,18 @@ class KVAC_GGM(Common_DVSC_Functions):
         return challenge == userChallengeHash
 
     def makeNIZKnonTransferable(self, usk, randomizedGPrime, randomizedUpk, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+        """
+        Non-transferability proof (NIZK-style construction)
+
+        Purpose:
+        - Proves possession of secret user key (usk)
+        - Binds credential presentation to a specific user public key
+        - Prevents credential sharing between users
+
+        Construction:
+        - Fiat-Shamir proof of knowledge of usk
+        - Uses randomized commitment and tag context
+        """
     
         randomizer = self.group.random(self.scalarType)
         randomizedAnnouncement =  randomizedGPrime ** randomizer
@@ -140,6 +195,11 @@ class KVAC_GGM(Common_DVSC_Functions):
     
 
     def verifyNICKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+        """
+        Extension:
+        - Verifies Schnorr-style proof of knowledge of user secret key
+        - Ensures presentation is bound to randomizedUpk and randomizedGPrime
+        """
         
         randomizedAnnouncement, proofResponse = proof
 
@@ -152,7 +212,15 @@ class KVAC_GGM(Common_DVSC_Functions):
         return left == right
 
     def issueCred(self, disclosedAttributes, isk, ipar, upk):
+        """
+        Extension:
+        - Credential issuance is now bound to user public key (upk)
+        - MAC tag depends on:
+            tag = commitment^x1 * g'^x2 * upk^x3
 
+        This enforces:
+        - credentials cannot be valid without the intended user public key
+        """
         #get secret keys and ipar
         secretKeyMac, secretKeySetCommitment = isk
         x1, x2, x3 = secretKeyMac
@@ -177,6 +245,11 @@ class KVAC_GGM(Common_DVSC_Functions):
     
 
     def obtainCred(self, tagTau, basis, pi, disclosedAttributes, ipar, upk):
+        """
+        Extension:
+        - Verification ensures MAC tag consistency with upk binding
+        - Prevents credential reuse with different public keys
+        """
 
         # Compute polynomial
         coefficients = self.createPolynomial(disclosedAttributes)
@@ -200,6 +273,15 @@ class KVAC_GGM(Common_DVSC_Functions):
     
 
     def showCred(self, tagTau, basis, disclosedAttributes, requiredAttributeSubset, usk, upk, ipar, commitment):
+        """
+        Extension:
+        - Adds non-transferability layer via proof of secret key possession
+        - Randomized presentation now binds:
+            - commitment
+            - group generator
+            - user public key
+        - Ensures credential cannot be replayed by another user
+        """
 
         #get random mu and make sure it is not 0
         randomScalarMu = self.group.random(self.scalarType)
@@ -225,7 +307,13 @@ class KVAC_GGM(Common_DVSC_Functions):
     
 
     def verify(self, randomizedTagTau, witness, requiredAttributeSubset, isk, randomizedCommitment, ipar, randomizedUpk, randomizedGPrime, proof):
-
+        """
+        Extension:
+         - Verification now includes:
+            1. MAC correctness under public-key binding
+            2. DVSC subset correctness
+            3. Non-transferability proof validation(NEW)
+        """
         #Make sure that tag is not base element
         if randomizedTagTau == self.groupIdentity():
             return False
