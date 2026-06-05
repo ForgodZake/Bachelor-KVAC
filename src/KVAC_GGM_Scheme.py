@@ -18,7 +18,7 @@ class KVAC_GGM(Common_DVSC_Functions):
 
     The issuer creates the commitment C on the user full attributeset S.
     The commitmnet is authenticated via the MAC tag τ = xC.
-    Here the secret key x is used to blind the credential.
+    Here the secret key x is used to authenticate the commitment.
     
     When presenting, the user randomizes the tag and computes a corresponding witness W, for the disclosed subset D.
     Verfier can then check if the randomized tag is valid for a correspondign credentail,
@@ -129,7 +129,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         Why we do this:
         The user needs to recompute the commmitment (C = f_S(v)yG) without the knowledge of the secret v.
         The polynomial coefficients of f_S(X) can be represented as its coefficients, and
-        coefficients can be computed either via the secret v or the commitment basis, f_S(v)yG = Σ_i f_iY_i.
+        coefficients can be computed either via the secret v as issuer/verifier or the commitment basis as user, f_S(v)yG = Σ_i f_iY_i.
     
         """
 
@@ -148,7 +148,7 @@ class KVAC_GGM(Common_DVSC_Functions):
     def sigmaProtocol(self, commitment, iparR, basis, x, v):
         
         """
-        sigmaProtocol() computes the Sigma-protocol relation values used in the NIZK proof.
+        sigmaProtocol() computes the Sigma-protocol announcement values used in the NIZK proof.
 
         Used by:
         - Issuer to compute the random announcement in makeNIZK().
@@ -166,7 +166,10 @@ class KVAC_GGM(Common_DVSC_Functions):
         - sigma_basis: corresponds to vY_i for each basis element Y_i.
 
         Why we do this:
-        Sigma is used through the NIZK proof, a
+        The proof is used to verify that the secret values x and v, without learning them, 
+        were used when generating the tag, the public parameters and the basis.
+        It becomes possible for the user to verify, that tagTau was creasted as xC,
+        iparX was created from iparR and x and each basis element as Y_{i+1} = vY_i.
        
         """
 
@@ -201,6 +204,12 @@ class KVAC_GGM(Common_DVSC_Functions):
         - response_v: corresponds to s_v = random_v + c*v.
 
         Why we do this:
+        The response value are computed as:
+        s_x = r_x + c*x
+        s_v = r_v + c*v
+        The response values allow the verifier to reconstruct the original announcement,
+        via the public parameters and check the challenge was correctly computed.
+        Since the secrets x and v are being masked, one cannot learn about them via the repsonse.
        
         """
 
@@ -229,7 +238,8 @@ class KVAC_GGM(Common_DVSC_Functions):
         - pi: corresponds to the proof π = (challenge, finalProof_x, finalProof_v).
 
         Why we do this:
-       
+        The user needs to chech, if basis, tag, and public parameters where created consistently.
+        makeNIZK() allows issuer to proof that τ = xC, X = xR and Y_{i+1} = vY_i without revealing x and v.
         """
 
         iparR, iparX, ipar_v = ipar 
@@ -266,7 +276,11 @@ class KVAC_GGM(Common_DVSC_Functions):
         - userChallengeHash: corresponds to the verifier's recomputed challenge.
 
         Why we do this:
-       
+        When a user want to accept a credential, they need to check, that the tag, basis and public parameters,
+        were genered consistently with the secrets x and v.
+
+        The user will recompute the announcement and hash it together with context.
+        If the resulting challenge is equal to the issuers sent challenge it accepts the proof.
         """
 
         challenge, proof_x, proof_v = pi
@@ -310,7 +324,11 @@ class KVAC_GGM(Common_DVSC_Functions):
         - pi: corresponds to the NIZK proof of consistency.
 
         Why we do this:
-       
+        The issuer first creates the commitment to the full attribute set.
+        Commitment is then authenticated using the homomorhpic MAC,
+        creating the tag τ = xC which becomes the users crdential.
+
+        The basis and proof are also returned, which allows the user to check consistency.
         """
 
         #get secret keys and ipar
@@ -352,7 +370,11 @@ class KVAC_GGM(Common_DVSC_Functions):
         - commitment: corresponds to the reconstructed commitment C = f_S(v)yG.
 
         Why we do this:
-       
+        The user must first verify the credential, through the NIZK check.
+        User also checks that the commitment was not the the identy element, 
+        as the protocol would then have established a wrongfull commitment.
+        Here the user does not have access to the secret v, so the commitment is reconstructe from coefficients and basis.
+        If both commitment and NIZK proof were valid, the credential gets returned to the user.
         """
 
         # Compute polynomial
@@ -394,7 +416,16 @@ class KVAC_GGM(Common_DVSC_Functions):
         - witness: corresponds to W = μy f_{S\D}(v)G.
         
         Why we do this:
-       
+        The user only wishes to reveal the required subset D.
+        The remaining attributes S\D should be kept hidden.
+        The witness is therefore computed from the remaining set S\D,
+        so the verifier can combine it with the polynomial over the disclosed subset D.
+
+        This allows the verifier to check that D is contained in the original committed set S,
+        while the randomized tag shows that the user still holds a valid credential for that commitment.
+
+        The tag and witness are both randomized using the same scalar μ.
+        This ensures that the presentation remains valid, while making multiple presentations unlinkable.
         """
 
         #get random mu and make sure it is not 0
@@ -425,15 +456,23 @@ class KVAC_GGM(Common_DVSC_Functions):
 
         Notation in paper and our correlating naming scheme:
         - randomizedTagTau: corresponds to the randomized tag τ' = μτ.
-        - witness: corresponds to W = μy f_{S\D}(v)G. - requiredAttributeSubset: corresponds to the disclosed subset D.
+        - witness: corresponds to W = μy f_{S\D}(v)G.
+        - requiredAttributeSubset: corresponds to the disclosed subset D.
         - isk: corresponds to the issuer/verifier secret key isk = (x, v).
         - polynomial: corresponds to f_D(v).
 
         Why we do this:
-       
+        The verfier uses the method verify the randomized tag against the disclosed subset and Witness.
+        Since the wintess is computed using the remaining set:
+        W = μy f_{S\D}(v)G
+        And the verifier computes the polynomimal in terms of D, we get:
+        f_D(v)W = μy f_S(v)G
+        multiplying by the secret x, should then result in the randomized tag:
+        x f_D(v)W = μx f_S(v)yG = μτ = τ'
+        If the check equals the tag, the verification gets accepted.
         """
 
-        #Make sure that tag is not base element
+        #Make sure that tag is not identity element
         if randomizedTagTau == self.groupIdentity():
             return False
         
