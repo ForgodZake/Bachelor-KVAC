@@ -17,11 +17,9 @@ class KVAC_MEQ:
     def __init__(self, groupObject):
         """
         Extension:
-        Pupblic parameters have additional gUpk 
-        pp is now := (G_1, G_2, G_T, p, e, g1, g2, g', g'', gUpk)
-
-        Used by:
-        -key generation and issuer to bind users public key to message
+        - Public parameters have additional gUpk 
+        - pp is now := (G_1, G_2, G_T, p, e, g1, g2, g', g'', gUpk)
+        - It's used in key generation by issuer to bind users public key to message.
 
         """
         
@@ -39,7 +37,7 @@ class KVAC_MEQ:
     def buildPIResponse(self, responseSequence, randomResponseSequence):
         """
         Extension:
-        - SP-MAC-EQ secret key extended from (x1, x2) → (x1, x2, x3)
+        - SP-MAC-EQ secret key extended from (x1, x2) -> (x1, x2, x3)
         - Adds third response component sX3 for Fiat-Shamir proof consistency
         - Required due to inclusion of public key generator gUpk in MAC structure
 
@@ -332,9 +330,9 @@ class KVAC_MEQ:
         """
         Extension:
         - Verification now includes:
-            1. SP-MAC-EQ verification
-            2. DVSC subset verification
-            3. Non-transferability proof verification(NEW)
+            - SP-MAC-EQ verification
+            - DVSC subset verification
+            - Non-transferability proof verification
         """
         sk_MEQ, sk_DVSC, _ = isk
         changedMessages, tagR, tagT = randomizedTag
@@ -348,7 +346,7 @@ class KVAC_MEQ:
         )
 
         #make sure secret key is valid
-        validSecretKey = self.verifyNICKnonTransferable(randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, requiredAttributesSubset, witness)
+        validSecretKey = self.verifyNIZKnonTransferable(randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, requiredAttributesSubset, witness)
 
         return verifyMEQ and verifySubset and validSecretKey
 

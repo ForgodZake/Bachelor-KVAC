@@ -6,11 +6,11 @@ class KVAC_GGM(Common_DVSC_Functions):
     Extended KVAC-GGM scheme with public-key binding and non-transferability.
 
     Main extensions compared to baseline KVAC-GGM:
-    1. MAC key expanded from (x) → (x1, x2, x3)
-    2. Credential issuance now binds to user public key (upk)
-    3. MAC tag depends on both commitment and upk
-    4. Presentation includes non-transferability proof (Schnorr-style)
-    5. Randomized presentation binds:
+    - MAC key expanded from (x) -> (x1, x2, x3)
+    - Credential issuance now binds to user public key (upk)
+    - MAC tag depends on both commitment and upk
+    - Presentation includes non-transferability proof (Schnorr-style)
+    - Randomized presentation binds:
         - commitment
         - tag
         - public key
@@ -310,9 +310,9 @@ class KVAC_GGM(Common_DVSC_Functions):
         """
         Extension:
          - Verification now includes:
-            1. MAC correctness under public-key binding
-            2. DVSC subset correctness
-            3. Non-transferability proof validation(NEW)
+            - MAC correctness under public-key binding
+            - DVSC subset correctness
+            - Non-transferability proof validation(NEW)
         """
         #Make sure that tag is not base element
         if randomizedTagTau == self.groupIdentity():
