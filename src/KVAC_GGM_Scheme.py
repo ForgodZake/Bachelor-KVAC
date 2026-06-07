@@ -194,7 +194,7 @@ class KVAC_GGM(Common_DVSC_Functions):
         return(randomizedAnnouncement, proofResponse)
     
 
-    def verifyNICKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
+    def verifyNIZKnonTransferable(self, randomizedGPrime, randomizedUpk, proof, ipar, randomizedCommitment, randomizedTag, disclosedSubset, subsetWitness):
         """
         Extension:
         - Verifies Schnorr-style proof of knowledge of user secret key
